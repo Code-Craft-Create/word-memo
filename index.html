@@ -219,7 +219,14 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 (function () {
   // Paste the web app config from your Firebase project here to share verses between people and devices
   // (see README). While it is empty, verses are kept in this browser only.
-  const FIREBASE_CONFIG = {};
+  const FIREBASE_CONFIG = {
+    apiKey: 'AIzaSyAPsEM6Xn7-Y2UW3CGbt8kBloNNSel6BdU',
+    authDomain: 'verse-memo.firebaseapp.com',
+    projectId: 'verse-memo',
+    storageBucket: 'verse-memo.firebasestorage.app',
+    messagingSenderId: '887532760525',
+    appId: '1:887532760525:web:fe305ad402d0615735e884'
+  };
   const FIREBASE_VERSION = '10.14.1';
 
   const KEY = 'verseBoard.v1';
