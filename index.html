@@ -124,6 +124,9 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 .sheet textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; min-height: 180px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .toast { color: var(--ok); font-size: .88rem; }
+.account { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .85rem; }
+.gate { max-width: 460px; margin: 40px auto 0; text-align: center; align-items: center; }
+.gate p { margin: 0; color: var(--muted); }
 @media (prefers-reduced-motion: no-preference) { .card { animation: in .25s ease-out; } @keyframes in { from { transform: translateY(4px); opacity: .6; } } }
 </style>
 </head>
@@ -141,10 +144,19 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
       <p class="sub">Collect the passages you are memorising.</p>
     </div>
     <div class="toolbar">
+      <span id="account" class="account" hidden><span id="whoami"></span><button id="btnSignOut" type="button" class="link">Sign out</button></span>
       <button id="btnExport" type="button">Export JSON</button>
       <button id="btnImport" type="button">Import JSON</button>
     </div>
   </header>
+  <div id="syncErr" class="err" hidden></div>
+
+  <section id="gate" class="panel gate" hidden>
+    <h2>Sign in to your shared verses</h2>
+    <p id="gateMsg">Loading…</p>
+    <button id="btnSignIn" type="button" class="primary" hidden>Sign in with Google</button>
+    <div id="gateErr" class="err"></div>
+  </section>
 
   <section id="exportSheet" class="sheet" hidden>
     <h2>Export</h2>
@@ -205,6 +217,11 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 
 <script>
 (function () {
+  // Paste the web app config from your Firebase project here to share verses between people and devices
+  // (see README). While it is empty, verses are kept in this browser only.
+  const FIREBASE_CONFIG = {};
+  const FIREBASE_VERSION = '10.14.1';
+
   const KEY = 'verseBoard.v1';
   const $ = (id) => document.getElementById(id);
 
@@ -280,15 +297,42 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
     };
   }
 
+  const cloud = !!FIREBASE_CONFIG.apiKey;
+  let db = null, fs = null; // Firestore instance and module, once signed in
+  let synced = new Map(); // verse id -> JSON of the version last seen in Firestore
+
   function load() {
+    if (cloud) return [];
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) return (JSON.parse(raw).verses || []).map(normalizeVerse).filter(Boolean);
     } catch (e) {}
     return EXAMPLES.map((v, i) => ({ id: uid(), createdAt: new Date(Date.now() - (i + 1) * 864e5).toISOString(), ...v }));
   }
+  // In shared mode, writes only the verses that differ from what Firestore last sent, and deletes removed ones.
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify({ verses })); } catch (e) {}
+    if (!cloud) {
+      try { localStorage.setItem(KEY, JSON.stringify({ verses })); } catch (e) {}
+      return;
+    }
+    if (!db) return;
+    const seen = new Set();
+    verses.forEach(v => {
+      const { id, ...data } = v;
+      const json = JSON.stringify(data);
+      seen.add(id);
+      if (synced.get(id) === json) return;
+      synced.set(id, json);
+      fs.setDoc(fs.doc(db, 'verses', id), data).catch(showSyncError);
+    });
+    [...synced.keys()].filter(id => !seen.has(id)).forEach(id => {
+      synced.delete(id);
+      fs.deleteDoc(fs.doc(db, 'verses', id)).catch(showSyncError);
+    });
+  }
+  function showSyncError(err) {
+    $('syncErr').textContent = 'Could not save to the shared verses: ' + (err && err.message || err);
+    $('syncErr').hidden = false;
   }
 
   let verses = load();
@@ -711,8 +755,82 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
     $('importFile').value = '';
   }
 
+  // ---------- shared mode: Google sign-in + Firestore ----------
+  function showApp(on) {
+    document.querySelector('.main').hidden = !on;
+    $('btnExport').hidden = $('btnImport').hidden = !on;
+    $('gate').hidden = on;
+    if (!on) { $('exportSheet').hidden = true; $('importSheet').hidden = true; }
+  }
+  async function startCloud() {
+    showApp(false);
+    const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
+    let appMod, authMod;
+    try {
+      [appMod, authMod, fs] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => import(base + f)));
+    } catch (e) {
+      $('gateMsg').textContent = 'Could not load Firebase. Check your internet connection and reload the page.';
+      return;
+    }
+    const app = appMod.initializeApp(FIREBASE_CONFIG);
+    const auth = authMod.getAuth(app);
+    // Keeps a copy on the device, so the board opens and edits work offline and sync later.
+    let store;
+    try { store = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
+    catch (e) { store = fs.getFirestore(app); }
+    let unsubscribe = null;
+    let deniedEmail = null;
+
+    $('btnSignIn').addEventListener('click', () => {
+      $('gateErr').textContent = '';
+      const provider = new authMod.GoogleAuthProvider();
+      authMod.signInWithPopup(auth, provider).catch(err => {
+        if (err.code === 'auth/popup-blocked') return authMod.signInWithRedirect(auth, provider);
+        if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') $('gateErr').textContent = 'Sign-in failed: ' + err.message;
+      });
+    });
+    $('btnSignOut').addEventListener('click', () => authMod.signOut(auth));
+    authMod.getRedirectResult(auth).catch(err => { $('gateErr').textContent = 'Sign-in failed: ' + err.message; });
+
+    authMod.onAuthStateChanged(auth, user => {
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      if (editingId) stopEdit();
+      db = null; synced = new Map(); verses = [];
+      $('syncErr').hidden = true;
+      if (!user) {
+        showApp(false);
+        $('account').hidden = true;
+        $('gateMsg').textContent = deniedEmail
+          ? `${deniedEmail} does not have access to these verses. Sign in with an account that was added in the Firestore rules.`
+          : 'Sign in with your Google account to see and edit the verses you share.';
+        deniedEmail = null;
+        $('btnSignIn').hidden = false;
+        renderAll();
+        return;
+      }
+      $('whoami').textContent = user.email || user.displayName || '';
+      $('account').hidden = false;
+      $('gateMsg').textContent = 'Loading verses…';
+      $('btnSignIn').hidden = true;
+      unsubscribe = fs.onSnapshot(fs.collection(store, 'verses'), snap => {
+        db = store;
+        const list = snap.docs.map(d => normalizeVerse({ ...d.data(), id: d.id })).filter(Boolean);
+        list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        synced = new Map(list.map(({ id, ...data }) => [id, JSON.stringify(data)]));
+        verses = list;
+        if (editingId && !verses.some(v => v.id === editingId)) stopEdit();
+        showApp(true);
+        renderAll();
+      }, err => {
+        if (err.code === 'permission-denied') { deniedEmail = user.email; authMod.signOut(auth); return; }
+        showSyncError(err);
+      });
+    });
+  }
+
   resetVersionBlocks();
   renderAll();
+  if (cloud) startCloud();
 })();
 </script>
 </body>
