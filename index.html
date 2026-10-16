@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Verse Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: a left "add verse" panel beside a masonry-ish board of verse cards; stacks to one column on phones. */
+:root {
+  --bg: #f3f4f7;
+  --surface: #ffffff;
+  --ink: #1d2233;
+  --muted: #5d6478;
+  --line: #dcdfe8;
+  --accent: #34449a;
+  --accent-soft: #e5e8f6;
+  --danger: #b3261e;
+  --hl: #fff2a8;
+  --hl-ink: #1d2233;
+  --ok: #2b7a4b;
+  --font-verse: "Literata", Georgia, "Times New Roman", serif;
+  --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12141c; --surface: #1b1e29; --ink: #e6e8f0; --muted: #9aa0b4; --line: #2d3142;
+    --accent: #9aa8ec; --accent-soft: #262c4a; --danger: #f08a82; --ok: #7cc79a; --hl: #e8d98e; --hl-ink: #161821; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12141c; --surface: #1b1e29; --ink: #e6e8f0; --muted: #9aa0b4; --line: #2d3142;
+  --accent: #9aa8ec; --accent-soft: #262c4a; --danger: #f08a82; --ok: #7cc79a; --hl: #e8d98e; --hl-ink: #161821; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--font-verse); font-weight: 600; font-size: 1.9rem; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 2px 0 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+.main { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+@media (max-width: 820px) { .main { grid-template-columns: 1fr; } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (min-width: 821px) { .panel.sticky { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); } }
+.panel h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+label { font-size: .78rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+label .opt { text-transform: none; letter-spacing: 0; font-weight: 400; }
+input[type=text], input[type=search], textarea {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; width: 100%;
+}
+textarea { resize: vertical; min-height: 110px; font-family: var(--font-verse); font-size: 1rem; }
+input:focus-visible, textarea:focus-visible, button:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint { font-size: .8rem; color: var(--muted); }
+.err { font-size: .82rem; color: var(--danger); min-height: 1.1em; }
+
+button { font: inherit; cursor: pointer; border-radius: 8px; padding: 8px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+button.primary:hover { filter: brightness(1.08); }
+button.link { border: 0; background: none; padding: 2px 4px; color: var(--muted); font-size: .85rem; }
+button.link:hover { color: var(--accent); }
+button.link.danger:hover, button.link.armed { color: var(--danger); }
+
+.taginput { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
+.taginput:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.taginput input { border: 0; background: transparent; padding: 4px; flex: 1 1 100px; min-width: 80px; outline: none; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: .82rem; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; white-space: nowrap; }
+.chip button { border: 0; background: none; padding: 0 2px; color: inherit; font-size: .95rem; line-height: 1; }
+button.chip { cursor: pointer; padding: 2px 9px; }
+button.chip.suggest { background: transparent; border-color: var(--line); color: var(--muted); }
+button.chip.suggest:hover { border-color: var(--accent); color: var(--accent); }
+button.chip.on { background: var(--accent); color: var(--surface); }
+.suggestions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.boardbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.boardbar input[type=search] { max-width: 280px; background: var(--surface); }
+.count { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.boardcol { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.board { columns: 2 280px; column-gap: 14px; }
+.card { break-inside: avoid; margin-bottom: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px 12px; display: flex; flex-direction: column; gap: 10px; }
+.card .ref { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.card .passage { font-family: var(--font-verse); font-weight: 600; font-size: 1.1rem; }
+.card .tr { font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.card blockquote { margin: 0; font-family: var(--font-verse); font-size: 1.02rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.card .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+.card .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.versions { display: flex; flex-direction: column; gap: 12px; }
+.version { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.version + .version { border-top: 1px dashed var(--line); padding-top: 12px; }
+.version .vhead { display: flex; justify-content: space-between; align-items: center; }
+.version .vhead span { font-size: .85rem; font-weight: 600; color: var(--ink); }
+button.addver { border-style: dashed; color: var(--accent); background: transparent; }
+.card select { font: inherit; font-size: .78rem; font-weight: 600; letter-spacing: .04em; color: var(--accent); background: var(--accent-soft); border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; max-width: 55%; }
+.formbtns > .primary { flex: 1; }
+.panel.editing { border-color: var(--accent); }
+.card.editing { outline: 2px solid var(--accent); outline-offset: -1px; }
+.card .actions { display: flex; gap: 4px; margin-left: auto; }
+.card blockquote::selection, .card blockquote *::selection { background: var(--accent-soft); }
+.hlpop { position: absolute; z-index: 20; display: flex; gap: 2px; padding: 4px; background: var(--ink); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.25); transform: translate(-50%, calc(-100% - 8px)); }
+.hlpop button { border: 0; background: transparent; color: var(--bg); font-size: .85rem; padding: 5px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; }
+.hlpop button:hover { background: rgba(127,127,127,.3); }
+.hlpop .swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--hl); }
+.hlpreview { font-family: var(--font-verse); font-size: .95rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; padding: 8px 11px; border: 1px dashed var(--line); border-radius: 8px; max-height: 220px; overflow: auto; }
+.hlpreview mark, .card blockquote mark { background: var(--hl); color: var(--hl-ink); border-radius: 3px; padding: 0 1px; cursor: pointer; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.boardhint { font-size: .82rem; color: var(--muted); margin: -4px 0 0; }
+.empty { border: 1px dashed var(--line); border-radius: var(--radius); padding: 28px; text-align: center; color: var(--muted); }
+
+.sheet { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.sheet h2 { margin: 0; font-size: 1rem; }
+.sheet textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; min-height: 180px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.toast { color: var(--ok); font-size: .88rem; }
+@media (prefers-reduced-motion: no-preference) { .card { animation: in .25s ease-out; } @keyframes in { from { transform: translateY(4px); opacity: .6; } } }
+</style>
+</head>
+<body>
+
+<div id="hlPop" class="hlpop" hidden role="toolbar" aria-label="Highlight">
+  <button id="hlAdd" type="button"><span class="swatch"></span>Highlight</button>
+  <button id="hlRemove" type="button">Remove highlight</button>
+</div>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Verse Board</h1>
+      <p class="sub">Collect the passages you are memorising.</p>
+    </div>
+    <div class="toolbar">
+      <button id="btnExport" type="button">Export JSON</button>
+      <button id="btnImport" type="button">Import JSON</button>
+    </div>
+  </header>
+
+  <section id="exportSheet" class="sheet" hidden>
+    <h2>Export</h2>
+    <p class="hint">A download was started where your browser allows it. You can also copy the JSON below and save it as a <code>.json</code> file.</p>
+    <textarea id="exportText" readonly></textarea>
+    <div class="row">
+      <button id="btnCopy" type="button" class="primary">Copy JSON</button>
+      <button id="btnCloseExport" type="button">Close</button>
+      <span id="copyMsg" class="toast"></span>
+    </div>
+  </section>
+
+  <section id="importSheet" class="sheet" hidden>
+    <h2>Import</h2>
+    <p class="hint">Pick a file exported from Verse Board, or paste its JSON. Verses already on the board are kept; duplicates are skipped.</p>
+    <input id="importFile" type="file" accept=".json,application/json">
+    <textarea id="importText" placeholder='{"verses": [ ... ]}'></textarea>
+    <div class="row">
+      <button id="btnDoImport" type="button" class="primary">Import</button>
+      <button id="btnCloseImport" type="button">Close</button>
+      <span id="importMsg" class="toast"></span>
+    </div>
+    <div id="importErr" class="err"></div>
+  </section>
+
+  <div class="main">
+    <form id="form" class="panel sticky" novalidate>
+      <h2 id="formTitle">Add a verse</h2>
+      <div id="versions" class="versions"></div>
+      <datalist id="translationList"></datalist>
+      <button id="btnAddVersion" type="button" class="addver">+ Add another translation</button>
+      <div class="field">
+        <label for="tagInput">Tags <span class="opt">(optional, several allowed)</span></label>
+        <div class="taginput" id="tagBox">
+          <span id="tagChips" style="display:contents"></span>
+          <input id="tagInput" type="text" placeholder="Type and press Enter" autocomplete="off">
+        </div>
+        <div id="tagSuggest" class="suggestions"></div>
+      </div>
+      <div id="formErr" class="err"></div>
+      <div class="row formbtns">
+        <button id="btnSubmit" type="submit" class="primary">Add to board</button>
+        <button id="btnCancelEdit" type="button" hidden>Cancel</button>
+      </div>
+    </form>
+
+    <section class="boardcol">
+      <div class="boardbar">
+        <input id="search" type="search" placeholder="Search passage or text">
+        <span id="count" class="count"></span>
+      </div>
+      <div id="filters" class="filters"></div>
+      <p class="boardhint">Select words in a verse to highlight the key part. Click a highlight to remove it.</p>
+      <div id="board" class="board"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  const KEY = 'verseBoard.v1';
+  const $ = (id) => document.getElementById(id);
+
+  // A verse holds one or more translations; each translation has its own passage reference and text.
+  const EXAMPLES = [
+    { tags: ['example', 'scripture'], translations: [
+      { passage: 'Psalm 119:105', translation: 'ESV', text: 'Your word is a lamp to my feet and a light to my path.' },
+      { passage: 'Psalm 119:105', translation: 'KJV', text: 'Thy word is a lamp unto my feet, and a light unto my path.' }
+    ] },
+    { tags: ['example', 'peace', 'prayer'], translations: [
+      { passage: 'Philippians 4:6-7', translation: 'NIV', text: 'Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus.', highlights: [{ start: 135, end: 187 }] }
+    ] },
+    { tags: ['example', 'courage'], translations: [
+      { passage: 'Joshua 1:9', translation: 'ESV', text: 'Have I not commanded you? Be strong and courageous. Do not be frightened, and do not be dismayed, for the LORD your God is with you wherever you go.' }
+    ] }
+  ];
+
+  const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const norm = (s) => String(s || '').trim();
+
+  // Highlights are [start, end) character ranges into a translation's text, kept sorted and non-overlapping.
+  function cleanHighlights(list, len) {
+    if (!Array.isArray(list)) return [];
+    const ranges = list.map(h => [Math.max(0, Math.floor(+(h && h.start))), Math.min(len, Math.floor(+(h && h.end)))])
+      .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b) && b > a)
+      .sort((x, y) => x[0] - y[0]);
+    const out = [];
+    ranges.forEach(([a, b]) => {
+      const last = out[out.length - 1];
+      if (last && a <= last.end) last.end = Math.max(last.end, b);
+      else out.push({ start: a, end: b });
+    });
+    return out;
+  }
+  function subtractRange(list, a, b) {
+    const out = [];
+    list.forEach(h => {
+      if (h.end <= a || h.start >= b) { out.push(h); return; }
+      if (h.start < a) out.push({ start: h.start, end: a });
+      if (h.end > b) out.push({ start: b, end: h.end });
+    });
+    return out;
+  }
+  // When a translation's text is edited, keep each highlight whose words can still be found in the new text.
+  function carryHighlights(orig, text) {
+    if (!orig || !orig.highlights || !orig.highlights.length) return [];
+    if (orig.text === text) return orig.highlights.map(h => ({ ...h }));
+    const moved = [];
+    orig.highlights.forEach(h => {
+      const frag = orig.text.slice(h.start, h.end);
+      const at = text.indexOf(frag);
+      if (frag && at >= 0) moved.push({ start: at, end: at + frag.length });
+    });
+    return cleanHighlights(moved, text.length);
+  }
+
+  // Accepts both the current shape and the older single-translation shape ({passage, translation, text}).
+  function normalizeVerse(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    let list = Array.isArray(raw.translations) ? raw.translations : [{ passage: raw.passage, translation: raw.translation, text: raw.text }];
+    const fallbackPassage = norm(raw.passage) || norm((list[0] || {}).passage);
+    list = list.map(t => {
+      const text = norm(t && t.text);
+      return { passage: norm(t && t.passage) || fallbackPassage, translation: norm(t && t.translation), text, highlights: cleanHighlights(t && t.highlights, text.length) };
+    }).filter(t => t.passage && t.text);
+    if (!list.length) return null;
+    return {
+      id: norm(raw.id) || uid(),
+      translations: list,
+      tags: Array.isArray(raw.tags) ? [...new Set(raw.tags.map(norm).filter(Boolean))] : [],
+      createdAt: raw.createdAt || new Date().toISOString(),
+      ...(raw.updatedAt ? { updatedAt: raw.updatedAt } : {})
+    };
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) return (JSON.parse(raw).verses || []).map(normalizeVerse).filter(Boolean);
+    } catch (e) {}
+    return EXAMPLES.map((v, i) => ({ id: uid(), createdAt: new Date(Date.now() - (i + 1) * 864e5).toISOString(), ...v }));
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ verses })); } catch (e) {}
+  }
+
+  let verses = load();
+  let draftTags = [];
+  let activeTag = null;
+  let pendingDelete = null;
+  let editingId = null;
+  const shownVersion = new Map(); // verse id -> index of the translation shown on its card
+
+  // Suggestions come from everything already saved (including imported verses).
+  const allTranslations = () => [...new Set(verses.flatMap(v => v.translations.map(t => t.translation)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  function tagCounts() {
+    const m = new Map();
+    verses.forEach(v => (v.tags || []).forEach(t => m.set(t, (m.get(t) || 0) + 1)));
+    return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }
+
+  function el(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    for (const k in (attrs || {})) {
+      if (k === 'class') n.className = attrs[k];
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    }
+    kids.flat().forEach(c => c != null && n.append(c));
+    return n;
+  }
+
+  // ---------- form: translation blocks ----------
+  let blockSeq = 0;
+  function addVersionBlock(values) {
+    const n = blockSeq++;
+    const blocks = $('versions');
+    const first = !blocks.children.length;
+    const firstPassage = first ? '' : norm(blocks.querySelector('.vpassage').value);
+    const block = el('fieldset', { class: 'version' },
+      el('div', { class: 'vhead' },
+        el('span', { class: 'vtitle' }),
+        first ? null : el('button', { type: 'button', class: 'link danger', onclick: () => { block.remove(); numberBlocks(); } }, 'Remove')
+      ),
+      el('div', { class: 'field' },
+        el('label', { for: 'passage-' + n }, 'Passage'),
+        el('input', { id: 'passage-' + n, class: 'vpassage', type: 'text', placeholder: 'e.g. John 3:16', autocomplete: 'off' })
+      ),
+      el('div', { class: 'field' },
+        el('label', { for: 'translation-' + n }, 'Translation ', el('span', { class: 'opt' }, '(optional)')),
+        el('input', { id: 'translation-' + n, class: 'vtranslation', type: 'text', list: 'translationList', placeholder: 'Pick one or type a new one', autocomplete: 'off' })
+      ),
+      el('div', { class: 'field' },
+        el('label', { for: 'content-' + n }, 'Text'),
+        el('textarea', { id: 'content-' + n, class: 'vtext', placeholder: first ? 'For God so loved the world…' : 'The same verse in another translation' }),
+        el('div', { class: 'hlpreview', 'aria-label': 'Highlight preview' }),
+        el('span', { class: 'hint hlhint' }, 'Select words in the text or the preview to highlight them.')
+      )
+    );
+    blocks.append(block);
+    block._hl = values && values.highlights ? values.highlights.map(h => ({ ...h })) : [];
+    block.querySelector('.vpassage').value = values ? values.passage : firstPassage;
+    const ta = block.querySelector('.vtext');
+    if (values) {
+      block.querySelector('.vtranslation').value = values.translation || '';
+      ta.value = values.text;
+    }
+    block._prevText = ta.value;
+    // Keep draft highlights attached to their words while the text is typed or pasted.
+    ta.addEventListener('input', () => {
+      block._hl = carryHighlights({ text: block._prevText, highlights: block._hl }, ta.value);
+      block._prevText = ta.value;
+      renderPreview(block);
+    });
+    renderPreview(block);
+    numberBlocks();
+    return block;
+  }
+  function renderPreview(block) {
+    const text = block.querySelector('.vtext').value;
+    const prev = block.querySelector('.hlpreview');
+    prev.replaceChildren(...renderText(text, block._hl));
+    prev.hidden = !text.trim();
+    block.querySelector('.hlhint').hidden = !text.trim();
+  }
+  function numberBlocks() {
+    const blocks = [...$('versions').children];
+    blocks.forEach((b, i) => { b.querySelector('.vtitle').textContent = blocks.length > 1 ? `Translation ${i + 1}` : ''; });
+    blocks[0].querySelector('.vhead').hidden = blocks.length === 1;
+  }
+  function resetVersionBlocks() {
+    $('versions').replaceChildren();
+    addVersionBlock();
+  }
+  function startEdit(v) {
+    editingId = v.id;
+    $('versions').replaceChildren();
+    v.translations.forEach(t => addVersionBlock(t));
+    draftTags = [...(v.tags || [])];
+    $('formErr').textContent = '';
+    $('formTitle').textContent = 'Edit verse';
+    $('btnSubmit').textContent = 'Save changes';
+    $('btnCancelEdit').hidden = false;
+    $('form').classList.add('editing');
+    renderDraftTags(); renderBoard();
+    $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('versions').querySelector('.vpassage').focus({ preventScroll: true });
+  }
+  function stopEdit() {
+    editingId = null;
+    draftTags = [];
+    $('formErr').textContent = '';
+    $('formTitle').textContent = 'Add a verse';
+    $('btnSubmit').textContent = 'Add to board';
+    $('btnCancelEdit').hidden = true;
+    $('form').classList.remove('editing');
+    resetVersionBlocks();
+    renderDraftTags(); renderBoard();
+  }
+  $('btnCancelEdit').addEventListener('click', stopEdit);
+  $('btnAddVersion').addEventListener('click', () => { addVersionBlock().querySelector('.vtranslation').focus(); });
+
+  function renderTranslationList() {
+    $('translationList').replaceChildren(...allTranslations().map(t => el('option', { value: t })));
+  }
+
+  // ---------- form: tags ----------
+  function addDraftTag(raw) {
+    const t = norm(raw).replace(/,+$/, '');
+    if (!t) return;
+    if (!draftTags.some(x => x.toLowerCase() === t.toLowerCase())) {
+      const existing = tagCounts().find(([k]) => k.toLowerCase() === t.toLowerCase());
+      draftTags.push(existing ? existing[0] : t);
+    }
+    $('tagInput').value = '';
+    renderDraftTags();
+  }
+  function renderDraftTags() {
+    $('tagChips').replaceChildren(...draftTags.map((t, i) =>
+      el('span', { class: 'chip' }, t, el('button', { type: 'button', 'aria-label': 'Remove ' + t, onclick: () => { draftTags.splice(i, 1); renderDraftTags(); } }, '×'))
+    ));
+    renderTagSuggest();
+  }
+  function renderTagSuggest() {
+    const q = norm($('tagInput').value).toLowerCase();
+    const list = tagCounts().map(([t]) => t)
+      .filter(t => !draftTags.some(d => d.toLowerCase() === t.toLowerCase()))
+      .filter(t => !q || t.toLowerCase().includes(q))
+      .slice(0, 12);
+    $('tagSuggest').replaceChildren(...list.map(t =>
+      el('button', { type: 'button', class: 'chip suggest', onclick: () => { addDraftTag(t); $('tagInput').focus(); } }, '+ ' + t)
+    ));
+  }
+  $('tagInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addDraftTag(e.target.value); }
+    else if (e.key === 'Backspace' && !e.target.value && draftTags.length) { draftTags.pop(); renderDraftTags(); }
+  });
+  $('tagInput').addEventListener('input', renderTagSuggest);
+  $('tagBox').addEventListener('click', (e) => { if (e.target.id === 'tagBox') $('tagInput').focus(); });
+
+  $('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (norm($('tagInput').value)) addDraftTag($('tagInput').value);
+    const blocks = [...$('versions').children];
+    const firstPassage = norm(blocks[0].querySelector('.vpassage').value);
+    const translations = [];
+    for (let i = 0; i < blocks.length; i++) {
+      const b = blocks[i];
+      const passage = norm(b.querySelector('.vpassage').value) || firstPassage;
+      const translation = norm(b.querySelector('.vtranslation').value);
+      const text = norm(b.querySelector('.vtext').value);
+      const label = blocks.length > 1 ? ` for translation ${i + 1}` : '';
+      if (i > 0 && !text && !translation && !norm(b.querySelector('.vpassage').value)) continue; // untouched extra block
+      if (!passage) { $('formErr').textContent = 'Enter the passage reference, e.g. Romans 8:28.'; b.querySelector('.vpassage').focus(); return; }
+      if (!text) { $('formErr').textContent = `Enter the verse text${label}.`; b.querySelector('.vtext').focus(); return; }
+      translations.push({ passage, translation, text, highlights: carryHighlights({ text: b.querySelector('.vtext').value, highlights: b._hl }, text) });
+    }
+    $('formErr').textContent = '';
+    const existing = editingId && verses.find(v => v.id === editingId);
+    if (existing) {
+      existing.translations = translations;
+      existing.tags = [...draftTags];
+      existing.updatedAt = new Date().toISOString();
+      shownVersion.delete(existing.id);
+    } else {
+      verses.unshift({ id: uid(), translations, tags: [...draftTags], createdAt: new Date().toISOString() });
+    }
+    save();
+    stopEdit();
+    renderAll();
+    $('versions').querySelector('.vpassage').focus();
+  });
+
+  // ---------- board ----------
+  function renderFilters() {
+    const tc = tagCounts();
+    if (activeTag && !tc.some(([t]) => t === activeTag)) activeTag = null;
+    $('filters').replaceChildren(
+      ...(tc.length ? [el('button', { type: 'button', class: 'chip' + (activeTag ? ' suggest' : ' on'), onclick: () => { activeTag = null; renderBoard(); renderFilters(); } }, 'All')] : []),
+      ...tc.map(([t, n]) => el('button', { type: 'button', class: 'chip' + (activeTag === t ? ' on' : ' suggest'), onclick: () => { activeTag = activeTag === t ? null : t; renderBoard(); renderFilters(); } }, `${t} · ${n}`))
+    );
+  }
+  function renderText(text, highlights) {
+    const parts = []; let pos = 0;
+    highlights.forEach((h, i) => {
+      if (h.start > pos) parts.push(text.slice(pos, h.start));
+      parts.push(el('mark', { 'data-hi': String(i), title: 'Click to remove highlight' }, text.slice(h.start, h.end)));
+      pos = h.end;
+    });
+    if (pos < text.length) parts.push(text.slice(pos));
+    return parts;
+  }
+  const versionLabel = (t, i) => t.translation || `Translation ${i + 1}`;
+  function renderBoard() {
+    const q = norm($('search').value).toLowerCase();
+    const shown = verses.filter(v =>
+      (!activeTag || (v.tags || []).includes(activeTag)) &&
+      (!q || v.translations.some(t => (t.passage + ' ' + t.text + ' ' + t.translation).toLowerCase().includes(q)))
+    );
+    $('count').textContent = shown.length === verses.length ? `${verses.length} verse${verses.length === 1 ? '' : 's'}` : `${shown.length} of ${verses.length} verses`;
+    if (!shown.length) {
+      $('board').replaceChildren(el('div', { class: 'empty', style: 'column-span: all' },
+        verses.length ? 'No verses match this filter.' : 'Your board is empty. Add your first verse with the form, or import a JSON file.'));
+      return;
+    }
+    $('board').replaceChildren(...shown.map(v => {
+      const armed = pendingDelete === v.id;
+      const idx = Math.min(shownVersion.get(v.id) || 0, v.translations.length - 1);
+      const cur = v.translations[idx];
+      let picker = null;
+      if (v.translations.length > 1) {
+        picker = el('select', { 'aria-label': 'Translation for ' + cur.passage, onchange: (e) => { shownVersion.set(v.id, +e.target.value); renderBoard(); } },
+          v.translations.map((t, i) => el('option', { value: String(i) }, versionLabel(t, i))));
+        picker.value = String(idx);
+      } else if (cur.translation) {
+        picker = el('span', { class: 'tr' }, cur.translation);
+      }
+      return el('article', { class: 'card' + (editingId === v.id ? ' editing' : '') },
+        el('div', { class: 'ref' }, el('span', { class: 'passage' }, cur.passage), picker),
+        el('blockquote', { 'data-vid': v.id, 'data-ti': String(idx) }, renderText(cur.text, cur.highlights || [])),
+        el('div', { class: 'foot' },
+          el('div', { class: 'tags' }, (v.tags || []).map(t => el('button', { type: 'button', class: 'chip', title: 'Show only ' + t, onclick: () => { activeTag = t; renderBoard(); renderFilters(); } }, t))),
+          el('div', { class: 'actions' },
+            el('button', { type: 'button', class: 'link', onclick: () => startEdit(v) }, 'Edit'),
+            el('button', { type: 'button', class: 'link danger' + (armed ? ' armed' : ''), onclick: () => {
+              if (armed) { if (editingId === v.id) stopEdit(); verses = verses.filter(x => x.id !== v.id); pendingDelete = null; save(); renderAll(); }
+              else { pendingDelete = v.id; renderBoard(); setTimeout(() => { if (pendingDelete === v.id) { pendingDelete = null; renderBoard(); } }, 4000); }
+            } }, armed ? 'Click again to delete' : 'Delete')
+          )
+        )
+      );
+    }));
+  }
+  $('search').addEventListener('input', renderBoard);
+
+  // ---------- highlighting ----------
+  let hlTarget = null; // { vid, ti, start, end, overlaps }
+  const pop = $('hlPop');
+  function hidePop() { pop.hidden = true; hlTarget = null; }
+  function showPop(rect, target) {
+    hlTarget = target;
+    $('hlAdd').hidden = !target.canAdd;
+    $('hlRemove').hidden = !target.overlaps;
+    pop.hidden = false;
+    const x = Math.min(Math.max(rect.left + rect.width / 2, 90), document.documentElement.clientWidth - 90);
+    pop.style.left = (x + window.scrollX) + 'px';
+    pop.style.top = (rect.top + window.scrollY) + 'px';
+  }
+  // A target is a saved translation on the board ({ vid, ti }) or a translation block in the form ({ block }).
+  function translationFor(target) {
+    if (target.block) return { text: target.block.querySelector('.vtext').value, highlights: target.block._hl };
+    const v = verses.find(x => x.id === target.vid);
+    return v && v.translations[target.ti];
+  }
+  function targetOf(container) {
+    if (container.matches('.hlpreview')) return { block: container.closest('.version') };
+    return { vid: container.dataset.vid, ti: +container.dataset.ti };
+  }
+  // Text selected inside a form textarea.
+  function checkTextarea() {
+    const ta = document.activeElement;
+    if (!ta || !ta.matches || !ta.matches('textarea.vtext')) return false;
+    let start = ta.selectionStart, end = ta.selectionEnd;
+    const text = ta.value;
+    while (start < end && /\s/.test(text[start])) start++;
+    while (end > start && /\s/.test(text[end - 1])) end--;
+    if (end <= start) return false;
+    const block = ta.closest('.version');
+    const covered = block._hl.some(h => h.start <= start && h.end >= end);
+    const overlaps = block._hl.some(h => h.start < end && h.end > start);
+    const rect = ta.getBoundingClientRect();
+    showPop({ left: rect.left, width: rect.width, top: rect.top }, { block, start, end, canAdd: !covered, overlaps, textarea: ta });
+    return true;
+  }
+  function textOffset(block, node, offset) {
+    const r = document.createRange();
+    r.selectNodeContents(block);
+    r.setEnd(node, offset);
+    return r.toString().length;
+  }
+  function checkSelection() {
+    if (checkTextarea()) return true;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
+    const range = sel.getRangeAt(0);
+    const startEl = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
+    const block = startEl && startEl.closest('blockquote[data-vid], .hlpreview');
+    if (!block || !block.contains(range.endContainer)) { hidePop(); return false; }
+    let start = textOffset(block, range.startContainer, range.startOffset);
+    let end = textOffset(block, range.endContainer, range.endOffset);
+    const target = targetOf(block);
+    const t = translationFor(target);
+    if (!t) return false;
+    while (start < end && /\s/.test(t.text[start])) start++;
+    while (end > start && /\s/.test(t.text[end - 1])) end--;
+    if (end <= start) { hidePop(); return false; }
+    const hl = t.highlights || [];
+    const covered = hl.some(h => h.start <= start && h.end >= end);
+    const overlaps = hl.some(h => h.start < end && h.end > start);
+    showPop(range.getBoundingClientRect(), { ...target, start, end, canAdd: !covered, overlaps });
+    return true;
+  }
+  const onSelectEnd = () => setTimeout(checkSelection, 0);
+  document.addEventListener('mouseup', (e) => { if (!pop.contains(e.target)) onSelectEnd(); });
+  document.addEventListener('touchend', (e) => { if (!pop.contains(e.target)) onSelectEnd(); });
+  document.addEventListener('keyup', (e) => { if (e.shiftKey || e.key === 'Shift') onSelectEnd(); if (e.key === 'Escape') hidePop(); });
+  document.addEventListener('mousedown', (e) => { if (!pop.contains(e.target)) hidePop(); });
+  pop.addEventListener('mousedown', (e) => e.preventDefault()); // keep the text selection while clicking the popover
+  document.addEventListener('click', (e) => {
+    const mark = e.target.closest && e.target.closest('mark[data-hi]');
+    if (!mark) return;
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) return;
+    const container = mark.closest('blockquote[data-vid], .hlpreview');
+    if (!container) return;
+    const target = targetOf(container);
+    const t = translationFor(target);
+    const h = t && t.highlights[+mark.dataset.hi];
+    if (!h) return;
+    showPop(mark.getBoundingClientRect(), { ...target, start: h.start, end: h.end, canAdd: false, overlaps: true });
+  });
+  function applyHighlight(add) {
+    if (!hlTarget) return;
+    const t = translationFor(hlTarget);
+    if (!t) return hidePop();
+    const { start, end, block, textarea } = hlTarget;
+    const next = add
+      ? cleanHighlights([...(t.highlights || []), { start, end }], t.text.length)
+      : subtractRange(t.highlights || [], start, end);
+    if (textarea) textarea.setSelectionRange(end, end);
+    window.getSelection().removeAllRanges();
+    hidePop();
+    if (block) { block._hl = next; renderPreview(block); return; }
+    t.highlights = next;
+    save();
+    renderBoard();
+  }
+  $('hlAdd').addEventListener('click', () => applyHighlight(true));
+  $('hlRemove').addEventListener('click', () => applyHighlight(false));
+  window.addEventListener('resize', hidePop);
+
+  function renderAll() { renderTranslationList(); renderDraftTags(); renderFilters(); renderBoard(); }
+
+  // ---------- export ----------
+  function exportJson() {
+    return JSON.stringify({ app: 'verse-board', version: 2, exportedAt: new Date().toISOString(), verses }, null, 2);
+  }
+  $('btnExport').addEventListener('click', () => {
+    const json = exportJson();
+    $('importSheet').hidden = true;
+    $('exportText').value = json;
+    $('copyMsg').textContent = '';
+    $('exportSheet').hidden = false;
+    try {
+      const a = el('a', { href: URL.createObjectURL(new Blob([json], { type: 'application/json' })), download: `verses-${new Date().toISOString().slice(0, 10)}.json` });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    } catch (e) {}
+  });
+  $('btnCopy').addEventListener('click', () => {
+    const ta = $('exportText');
+    const done = () => { $('copyMsg').textContent = 'Copied'; };
+    const fallback = () => { ta.focus(); ta.select(); $('copyMsg').textContent = 'Selected, press Ctrl/Cmd+C to copy'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
+    else fallback();
+  });
+  $('btnCloseExport').addEventListener('click', () => { $('exportSheet').hidden = true; });
+
+  // ---------- import ----------
+  $('btnImport').addEventListener('click', () => {
+    $('exportSheet').hidden = true;
+    $('importErr').textContent = ''; $('importMsg').textContent = '';
+    $('importSheet').hidden = false;
+  });
+  $('btnCloseImport').addEventListener('click', () => { $('importSheet').hidden = true; });
+  $('importFile').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { $('importText').value = r.result; doImport(); };
+    r.readAsText(f);
+  });
+  $('btnDoImport').addEventListener('click', doImport);
+
+  function doImport() {
+    $('importErr').textContent = ''; $('importMsg').textContent = '';
+    let data;
+    try { data = JSON.parse($('importText').value); }
+    catch (e) { $('importErr').textContent = 'That is not valid JSON. Check that you pasted the whole export.'; return; }
+    const list = Array.isArray(data) ? data : (data && Array.isArray(data.verses) ? data.verses : null);
+    if (!list) { $('importErr').textContent = 'No "verses" list found in this JSON.'; return; }
+    const ids = new Set(verses.map(v => v.id));
+    const sig = (v) => v.translations.map(t => (t.passage + '|' + t.translation + '|' + t.text).toLowerCase()).join('||');
+    const sigs = new Set(verses.map(sig));
+    let added = 0, skipped = 0, invalid = 0;
+    list.forEach(raw => {
+      const v = normalizeVerse(raw);
+      if (!v) { invalid++; return; }
+      if (ids.has(v.id) || sigs.has(sig(v))) { skipped++; return; }
+      ids.add(v.id); sigs.add(sig(v)); verses.push(v); added++;
+    });
+    save(); renderAll();
+    $('importMsg').textContent = `Imported ${added} verse${added === 1 ? '' : 's'}` + (skipped ? `, skipped ${skipped} already on the board` : '') + (invalid ? `, ignored ${invalid} without passage or text` : '') + '.';
+    $('importFile').value = '';
+  }
+
+  resetVersionBlocks();
+  renderAll();
+})();
+</script>
+</body>
+</html>
