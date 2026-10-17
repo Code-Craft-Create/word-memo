@@ -285,7 +285,7 @@ button.mitem.sel { border-color: var(--accent); background: var(--accent-soft); 
 button.mitem.done { border-color: var(--ok); color: var(--ok); opacity: .55; cursor: default; }
 button.mitem.wrong, button.piece.wrong, button.opt.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
 @media (prefers-reduced-motion: no-preference) { button.mitem.wrong, button.piece.wrong, button.opt.wrong { animation: shake .3s; } @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } } }
-/* Word order, What comes next, Build it up and Lightning round show the verse on a card that does not turn. */
+/* Word order, Build it up and Lightning round show the verse on a card that does not turn. */
 .face.stage { min-height: 200px; }
 .vtxt .rest { color: var(--muted); }
 .vtxt .cue { color: var(--muted); letter-spacing: .04em; }
@@ -1440,7 +1440,6 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     { id: 'fade', icon: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
     { id: 'match', icon: 'link', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' },
     { id: 'order', icon: 'arrange', name: 'Word order', desc: 'Tap the pieces of the verse in order. They get smaller as you improve.' },
-    { id: 'next', icon: 'next', name: 'What comes next', desc: 'Build the verse phrase by phrase, picking the right one of three.' },
     { id: 'build', icon: 'build', name: 'Build it up', desc: 'For new verses: learn one phrase at a time, then say it all.' },
     { id: 'lightning', icon: 'bolt', name: 'Lightning round', desc: 'One minute of quick questions. Try to beat your best.' }
   ];
@@ -1761,10 +1760,6 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       s.parts = phrases(text, Math.max(ORDER_SIZE[boxOf(v.id)], Math.ceil(n / ORDER_MAX)));
       s.pool = shuffle(s.parts.map((_, i) => i));
       s.placed = 0; s.slips = 0; s.wrong = null;
-    } else if (s.mode === 'next') {
-      s.parts = phrases(text, 6);
-      s.placed = 0; s.slips = 0; s.wrong = null;
-      s.options = nextOptions(v);
     } else if (s.mode === 'build') {
       s.parts = phrases(text, 7);
       s.step = Math.min(s.step, s.parts.length);
@@ -1828,10 +1823,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       el('div', { class: 'rate' }, RATINGS.map((r, i) =>
         el('button', { type: 'button', class: 'r' + i, onclick: () => rate(i) }, icon(r.icon), r.name, el('span', null, r.desc)))));
   }
-  const STAGED = ['order', 'next', 'build']; // modes shown on a card that does not turn
+  const STAGED = ['order', 'build']; // modes shown on a card that does not turn
   const KEYS = {
     order: 'Keyboard: Enter goes on to the next verse.',
-    next: 'Keyboard: 1 to 3 pick a phrase, Enter goes on to the next verse.',
     build: 'Keyboard: Space goes on, 1 to 4 rate the verse at the end.'
   };
   function renderSession() {
@@ -1859,8 +1853,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       el('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(s.queue.length), 'aria-valuenow': String(s.idx) },
         el('div', { style: `width:${Math.round(100 * s.idx / s.queue.length)}%` })),
       card,
-      // The pieces of "Word order" and "What comes next" belong to one translation, so it cannot change midway.
-      v.translations.length > 1 && s.mode !== 'order' && s.mode !== 'next' ? el('div', { class: 'trswitch', role: 'group', 'aria-label': 'Show another translation' },
+      // The pieces of "Word order" belong to one translation, so it cannot change midway.
+      v.translations.length > 1 && s.mode !== 'order' ? el('div', { class: 'trswitch', role: 'group', 'aria-label': 'Show another translation' },
         v.translations.map((t, i) => {
           const on = t === cardTr(v);
           return el('button', { type: 'button', class: 'chip' + (on ? ' on' : ' suggest'), 'aria-pressed': String(on),
@@ -1907,7 +1901,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     renderSession();
   }
 
-  // ---------- "Word order", "What comes next" and "Build it up" ----------
+  // ---------- "Word order" and "Build it up" ----------
   function stageFace(v) {
     const s = session, t = cardTr(v);
     const ref = passageOf(t) + (t.translation ? ' · ' + t.translation : '');
@@ -1938,16 +1932,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         el('p', { class: 'result r' + s.result }, (s.slips ? `${s.slips} slip${s.slips === 1 ? '' : 's'}` : 'No slips') + ' · ' + RATINGS[s.result].name),
         el('button', { type: 'button', class: 'primary', onclick: nextCard }, icon(last ? 'check' : 'next'), last ? 'See results' : 'Next verse'));
     }
-    if (s.mode === 'order') return el('div', { class: 'learnctl' },
+    return el('div', { class: 'learnctl' },
       el('div', { class: 'lab' }, s.placed ? 'Tap the next piece' : 'Tap the first piece'),
       el('div', { class: 'pieces' }, s.pool.map(i => el('button', { type: 'button', class: 'piece' + (s.wrong === i ? ' wrong' : ''), onclick: () => orderTap(i) }, s.parts[i]))));
-    return el('div', { class: 'learnctl' },
-      el('div', { class: 'lab' }, s.placed ? 'What comes next?' : 'How does it start?'),
-      el('div', { class: 'opts' }, s.options.map(o => {
-        const b = el('button', { type: 'button', class: 'opt' + (s.wrong === o ? ' wrong' : ''), onclick: () => nextPick(o) }, o);
-        if (s.ruled.has(o) && s.wrong !== o) b.disabled = true;
-        return b;
-      })));
   }
   // A finished verse is rated by its slips: none is "Got it", one or two "Shaky", more "Not yet".
   function finishStaged() {
@@ -1967,27 +1954,6 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (s.parts[i] !== s.parts[s.placed]) return slip(s, i);
     s.pool = s.pool.filter(x => x !== i);
     if (++s.placed === s.parts.length) return finishStaged();
-    renderSession();
-  }
-  // The right next phrase and two wrong ones: preferably a later phrase of the same verse and one from another verse.
-  function nextOptions(v) {
-    const s = session, right = s.parts[s.placed];
-    const later = shuffle(s.parts.slice(s.placed + 1)), earlier = shuffle(s.parts.slice(0, s.placed));
-    const other = shuffle(shuffle(otherTexts(v, cardTr(v))).slice(0, 6).flatMap(x => phrases(x, 6)));
-    const wrong = [];
-    for (const p of [...later.slice(0, 1), ...other, ...later.slice(1), ...earlier]) {
-      if (wrong.length === 2) break;
-      if (p !== right && !wrong.includes(p)) wrong.push(p);
-    }
-    s.ruled = new Set();
-    return shuffle([right, ...wrong]);
-  }
-  function nextPick(o) {
-    const s = session;
-    if (s.wrong != null || s.result != null || s.ruled.has(o)) return;
-    if (o !== s.parts[s.placed]) { s.ruled.add(o); return slip(s, o); }
-    if (++s.placed === s.parts.length) return finishStaged();
-    s.options = nextOptions(currentVerse());
     renderSession();
   }
   function buildStep() {
@@ -2192,11 +2158,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (e.target.closest && e.target.closest('input, textarea, select, button')) return;
     const s = session, k = e.key, go = k === ' ' || k === 'Enter';
     if (s.mode === 'lightning') { if (/^[1-4]$/.test(k) && s.q && s.q.options[+k - 1] != null) lightningPick(s.q.options[+k - 1]); return; }
-    if (s.mode === 'order' || s.mode === 'next') {
-      if (go && s.result != null) { e.preventDefault(); nextCard(); }
-      else if (s.mode === 'next' && s.result == null && /^[1-3]$/.test(k) && s.options[+k - 1] != null) nextPick(s.options[+k - 1]);
-      return;
-    }
+    if (s.mode === 'order') { if (go && s.result != null) { e.preventDefault(); nextCard(); } return; }
     if (go) { e.preventDefault(); if (s.mode === 'build') buildStep(); else turn(); }
     else if (s.revealed && /^[1-4]$/.test(k)) rate(+k - 1);
   });
@@ -2343,19 +2305,6 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
           line.replaceChildren(...DEMO.parts.slice(0, placed).map((p, i) => el('span', { class: f && i === placed - 1 && placed > prev ? 'newbit' : '' }, (i ? ' ' : '') + p)), placed < 4 ? el('span', { class: 'rest' }, (placed ? ' ' : '') + '…') : '');
           pieces.forEach((b, k) => { const i = pool[k]; b.className = 'piece' + (i < placed ? ' gone' : i === wrong ? ' wrong' : ''); });
           cap.replaceChildren(...(wrong != null ? ['Wrong piece: one slip'] : placed === 4 ? ['Done with one slip: ', el('b', null, 'Shaky'), ' +5'] : ['']));
-        } };
-      } },
-    { mode: 'next', text: [el('p', null, 'Build the verse phrase by phrase. Each time, pick the phrase that comes next out of three.'), autoRated.cloneNode(true)],
-      demo: () => {
-        const line = el('div', { class: 'vtxt' }), opts = el('div', { class: 'opts' }), cap = el('div', { class: 'cap' });
-        const O = [['to my feet', 'Your word is a lamp', 'Be strong and courageous'], ['and a light', 'Do not be anxious', 'to my feet'], ['to my path.', 'and a light', 'for the LORD your God'], ['Have I not commanded you?', 'to my path.', 'to my feet']];
-        // [placed, options shown, picked option, right?]
-        const F = [[0, 0], [0, 0, 1, true], [1, 1], [1, 1, 2, true], [2, 2], [2, 2, 0, false], [2, 2, 1, true], [3, 3], [3, 3, 1, true], [4]];
-        return { node: [el('div', { class: 'face stage' }, el('div', { class: 'kicker' }, DEMO.ref), line), opts, cap], frames: F.length, ms: 900, show: (f) => {
-          const [placed, oi, pick, ok] = F[f];
-          line.replaceChildren(...DEMO.parts.slice(0, placed).map((p, i) => el('span', { class: i === placed - 1 && F[f - 1] && F[f - 1][0] < placed ? 'newbit' : '' }, (i ? ' ' : '') + p)), placed < 4 ? el('span', { class: 'rest' }, (placed ? ' ' : '') + '…') : '');
-          opts.replaceChildren(...(oi == null ? [] : O[oi].map((o, i) => el('button', { type: 'button', tabindex: '-1', class: 'opt' + (i === pick ? (ok ? ' right' : ' wrong') : '') }, o))));
-          cap.replaceChildren(...(f === 5 ? ['Not this one: one slip'] : placed === 4 ? ['Done with one slip: ', el('b', null, 'Shaky'), ' +5'] : ['']));
         } };
       } },
     { mode: 'build', text: [el('p', null, 'Made for new verses. You learn one phrase at a time and say everything so far, with first letters as a hint for the earlier phrases. At the end you say the whole verse and rate yourself.')],
