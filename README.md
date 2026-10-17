@@ -14,7 +14,7 @@ Open `index.html` in a browser.
 - Highlight key words by selecting them, either on the board or in the form.
 - Edit or delete verses.
 - Export all verses to JSON and import them again. Older single-translation exports still import.
-- Learn in sessions: pick verses one by one, by tag, or all that are due. Choose a way of learning (flip cards, which verse?, first letters, fading words), turn each card around when ready and rate how well you knew it: Not yet, Shaky, Got it or Perfect. Nothing needs typing.
+- Learn in sessions: pick verses one by one, by tag, or all that are due. Choose a way of learning (flip cards, which verse?, first letters, fading words), turn each card around when ready and rate how well you knew it: Not yet, Shaky, Got it or Perfect. Or play "Match up": tap each verse and then its passage, in rounds of up to five; a first-try match counts as Got it, one miss as Shaky, more as Not yet. Nothing needs typing.
 - Each rating moves the verse to a level (0 to 6, shown as dots) and schedules when it is due again, from the same day up to a month later. Sessions give points, runs of known verses earn a bonus, and the app counts the days in a row you practised.
 
 - Share one collection of verses with other people: everyone signs in with Google and sees and edits the same verses, live. It also works offline and syncs later.
