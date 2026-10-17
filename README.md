@@ -9,7 +9,8 @@ Open `index.html` in a browser.
 ## Features
 
 - A home screen shows what's due, your days in a row, the verses of your last set or session (with a button to continue), and your learning sets. A menu (top right) leads to Learn, All verses, Add a verse, and Settings & backup (account, sign out, export, import).
-- Add a verse with a passage, an optional translation and the text. Earlier translations are suggested.
+- Add a verse with an optional translation, a passage and the text. Pick the book from a list of all 66 books (type to filter, e.g. "Joh"), then enter chapter and verse ("3:16", "3,16" or "3:16-18"). You can also type a whole passage such as "Joh 3,16" into the chapter field. Passages are stored as book + chapter:verse, so they are shown in the language of each translation: "John 3:16" for the NIV, "Johannes 3,16" for the NGÜ. Verses saved before this are read automatically where their passage is recognised (English and German names and common abbreviations).
+- Settings → Translations lists the translations you use and their language (English or German); NGÜ, SLT2000 and NIV are there to start with. Translations used on verses but not listed can be added with one click, and well-known abbreviations fill in their name and language. Unlisted translations are shown in English.
 - "Look up on Bibleserver" opens the passage in that translation on bibleserver.com, so you can copy the text in (the app does not fetch copyrighted text itself). NGÜ, Schlachter 2000 (SLT, SLT2000, SCH2000) and NIV are recognised under their usual names; other abbreviations are passed on as typed.
 - "Compare all your translations on Bibleserver" opens the passage once in every translation used so far (and any typed in the form), one after another.
 - Add several translations of the same verse, and switch between them on the board.
@@ -29,6 +30,8 @@ Open `index.html` in a browser.
 While `FIREBASE_CONFIG` at the top of the script in `index.html` is empty, verses are stored in the browser's `localStorage` only.
 
 Once it is filled in, verses are stored in Cloud Firestore in the `verses` collection (one document per verse, keyed by its id), and only the Google accounts listed in the Firestore rules can read or change them.
+
+The list of translations is shared: in `localStorage` under `verseBoard.translations.v1`, or in the Firestore document `config/translations`. If you set up sharing before this existed, publish the current [`firestore.rules`](firestore.rules) again (see below), or changes to it cannot be saved.
 
 Learning sets are shared: in `localStorage` under `verseBoard.sets.v1`, or in the Firestore collection `sets` (one document per set: name and verse ids).
 
