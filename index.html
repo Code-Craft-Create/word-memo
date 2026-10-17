@@ -26,16 +26,20 @@
   --font-verse: "Literata", Georgia, "Times New Roman", serif;
   --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 10px;
+  /* progress stages: new, learning, learned, mastered */
+  --st0: #c9cdd9; --st1: #e3a33b; --st2: #34449a; --st3: #2b7a4b; --st0-ink: #737a8f;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #12141c; --surface: #1b1e29; --ink: #e6e8f0; --muted: #9aa0b4; --line: #2d3142;
     --accent: #9aa8ec; --accent-soft: #262c4a; --danger: #f08a82; --ok: #7cc79a; --warn: #e3b26a; --hl: #e8d98e; --hl-ink: #161821; color-scheme: dark;
+    --st0: #3d4255; --st1: #e3b26a; --st2: #9aa8ec; --st3: #7cc79a; --st0-ink: #9aa0b4;
   }
 }
 :root[data-theme="dark"] {
   --bg: #12141c; --surface: #1b1e29; --ink: #e6e8f0; --muted: #9aa0b4; --line: #2d3142;
   --accent: #9aa8ec; --accent-soft: #262c4a; --danger: #f08a82; --ok: #7cc79a; --warn: #e3b26a; --hl: #e8d98e; --hl-ink: #161821; color-scheme: dark;
+  --st0: #3d4255; --st1: #e3b26a; --st2: #9aa8ec; --st3: #7cc79a; --st0-ink: #9aa0b4;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -274,6 +278,62 @@ button.setpick { flex: 1; min-width: 0; border: 0; background: none; text-align:
 .setpick span { font-size: .8rem; color: var(--muted); }
 .setrow .bar { width: 90px; flex: none; }
 @media (max-width: 520px) { .setrow .bar { width: 48px; } }
+/* Progress overview: a ring with the share learned, the four stages with icons and counts, and a bar in the stage colours. */
+.s0 { --c: var(--st0); --ci: var(--st0-ink); } .s1 { --c: var(--st1); --ci: var(--st1); } .s2 { --c: var(--st2); --ci: var(--st2); } .s3 { --c: var(--st3); --ci: var(--st3); }
+.sbar { display: flex; gap: 2px; height: 10px; border-radius: 999px; overflow: hidden; background: var(--line); }
+.sbar > div { background: var(--c); flex-basis: 0; min-width: 4px; }
+.sbar.thin { height: 6px; }
+.overview { display: flex; gap: 18px; align-items: center; }
+.ovright { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.ringwrap { position: relative; width: 112px; height: 112px; flex: none; }
+.ringwrap.small { width: 64px; height: 64px; }
+.ringwrap svg { width: 100%; height: 100%; display: block; }
+.ringwrap circle { fill: none; stroke-width: 4; }
+.ringwrap .rtrack { stroke: var(--line); }
+.ringwrap .r2 { stroke: var(--st2); } .ringwrap .r3 { stroke: var(--st3); }
+.rnum { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.rnum b { font-family: var(--font-verse); font-size: 1.7rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rnum span { font-size: .75rem; color: var(--muted); }
+.ringwrap.small .rnum b { font-size: 1rem; }
+.stages { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stage { border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 8px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.stage b { font-size: 1.3rem; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 5px; line-height: 1.2; }
+.stage b svg.ic { width: .8em; height: .8em; color: var(--ci); }
+.stage span { font-size: .78rem; color: var(--muted); }
+@media (max-width: 520px) { .overview { flex-direction: column; align-items: stretch; } .ringwrap:not(.small) { align-self: center; } .stages { grid-template-columns: repeat(2, 1fr); } }
+.minis { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: .8rem; color: var(--muted); }
+.mini { display: inline-flex; align-items: center; gap: 3px; font-variant-numeric: tabular-nums; }
+.mini svg.ic { width: 1em; height: 1em; color: var(--ci, var(--muted)); }
+.setprog { flex: none; width: 110px; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.setprog b { font-variant-numeric: tabular-nums; font-size: .95rem; }
+.setprog .sbar { width: 100%; }
+@media (max-width: 520px) { .setprog { width: 64px; } }
+/* Session summary: before and after */
+.subhead { margin: 4px 0 0; font-size: 1rem; font-weight: 600; }
+.deltas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.delta { border: 1px solid var(--line); border-radius: 8px; padding: 10px 6px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+.delta b { font-size: 1.35rem; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; }
+.delta b svg.ic { width: .8em; height: .8em; color: var(--ci, var(--muted)); }
+.delta > span { font-size: .8rem; color: var(--muted); }
+.delta .was { color: var(--muted); font-weight: 500; }
+.delta b svg.ic.arrow { color: var(--muted); }
+.up { color: var(--ok); } .down { color: var(--danger); }
+.delta.good { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.compare { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 10px; align-items: center; font-size: .85rem; }
+.compare > span { color: var(--muted); }
+.compare > b { font-variant-numeric: tabular-nums; text-align: right; }
+.scopes { display: flex; flex-direction: column; gap: 8px; }
+.scope { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.scope .sname { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.scope .sname strong { font-weight: 600; overflow-wrap: anywhere; }
+.scope .pcts { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scope .pcts .was { color: var(--muted); }
+.scope .pcts b { font-size: 1.15rem; }
+.scope .pcts svg.ic { width: 1em; height: 1em; color: var(--muted); }
+.lvchg { display: inline-flex; align-items: center; gap: 3px; font-size: .8rem; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+.lvchg svg.ic { width: 1em; height: 1em; }
+.lvchg.up, .lvchg.down { font-weight: 600; }
+.lvchg.up { color: var(--ok); } .lvchg.down { color: var(--danger); }
 .savesets input[type=text] { flex: 1 1 200px; width: auto; }
 .match { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, .5fr); gap: 10px; align-items: start; }
 .mcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -562,7 +622,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.15 (17 Oct 2026)';
+  const APP_VERSION = '1.16 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -604,7 +664,15 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     build: '<path d="M3 21h18"/><rect x="5" y="15" width="14" height="4" rx="1"/><rect x="7" y="9" width="10" height="4" rx="1"/><rect x="9" y="3" width="6" height="4" rx="1"/>',
     bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5h.01"/>',
-    tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>'
+    tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+    fresh: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="3.2 3.2"/>',
+    sprout: '<path d="M12 21v-9"/><path d="M12 12c0-4-3-6.5-8-6.5 0 4 3 6.5 8 6.5z"/><path d="M12 14.5c0-3.5 2.6-5.5 7.5-5.5 0 3.6-2.6 5.5-7.5 5.5z"/>',
+    learned: '<circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/>',
+    trophy: '<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4"/><path d="M17 6h3a3 3 0 0 1-3 4"/><path d="M12 14v4"/><path d="M8 21h8"/><path d="M9.5 18h5"/>',
+    trend: '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
+    chart: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>',
+    arrowup: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
+    arrowdown: '<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>'
   };
   function icon(name) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1432,6 +1500,61 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     return n;
   }
 
+  // ---------- progress overview ----------
+  // Every verse is in one stage for the signed-in person: new (never practised), learning (level 0 to 2),
+  // learned (level 3 or 4) or mastered (level 5 or 6). "Learned" in counts and percentages means learned or mastered.
+  const STAGES = [
+    { name: 'New', icon: 'fresh', desc: 'Not practised yet' },
+    { name: 'Learning', icon: 'sprout', desc: 'Level 0 to 2' },
+    { name: 'Learned', icon: 'learned', desc: 'Level 3 or 4' },
+    { name: 'Mastered', icon: 'trophy', desc: 'Level 5 or 6' }
+  ];
+  const stageOfEntry = (p) => !p ? 0 : p.box >= 5 ? 3 : p.box >= 3 ? 2 : 1;
+  const stageOf = (id) => stageOfEntry(progress.verses[id]);
+  function stageCounts(ids, of) {
+    const c = [0, 0, 0, 0];
+    ids.forEach(id => c[(of || stageOf)(id)]++);
+    return c;
+  }
+  const learnedOf = (c) => c[2] + c[3];
+  const pctOf = (c) => { const n = c[0] + c[1] + c[2] + c[3]; return n ? Math.round(100 * learnedOf(c) / n) : 0; };
+  const stageText = (c) => STAGES.map((st, i) => `${c[i]} ${st.name.toLowerCase()}`).join(', ');
+  function stageBar(c, thin) {
+    return el('div', { class: 'sbar' + (thin ? ' thin' : ''), role: 'img', 'aria-label': stageText(c), title: stageText(c) },
+      c.map((k, i) => k ? el('div', { class: 's' + i, style: `flex-grow:${k}` }) : null));
+  }
+  // A ring filled with the share of mastered (green) and learned (indigo) verses, the percentage in the middle.
+  function progressRing(c, small) {
+    const n = c[0] + c[1] + c[2] + c[3] || 1;
+    const m = 100 * c[3] / n, l = 100 * c[2] / n;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 36 36'); svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = `<circle class="rtrack" cx="18" cy="18" r="15.9"/>` +
+      (l ? `<circle class="r2" cx="18" cy="18" r="15.9" pathLength="100" stroke-dasharray="${l} 100" stroke-dashoffset="${-m}" transform="rotate(-90 18 18)"/>` : '') +
+      (m ? `<circle class="r3" cx="18" cy="18" r="15.9" pathLength="100" stroke-dasharray="${m} 100" transform="rotate(-90 18 18)"/>` : '');
+    return el('div', { class: 'ringwrap' + (small ? ' small' : ''), role: 'img', 'aria-label': `${pctOf(c)}% learned` }, svg,
+      el('div', { class: 'rnum' }, el('b', null, pctOf(c) + '%'), small ? null : el('span', null, 'learned')));
+  }
+  function stageTiles(c) {
+    return el('div', { class: 'stages' }, STAGES.map((st, i) =>
+      el('div', { class: 'stage s' + i, title: st.desc }, el('b', null, icon(st.icon), String(c[i])), el('span', null, st.name))));
+  }
+  function progressOverview(ids) {
+    const c = stageCounts(ids);
+    return el('div', { class: 'overview' }, progressRing(c), el('div', { class: 'ovright' }, stageTiles(c), stageBar(c)));
+  }
+  // Small icon counts for a set row: each stage that has verses, then the verses due.
+  function stageMinis(ids, c) {
+    const dueN = ids.filter(isDue).length;
+    return el('span', { class: 'minis' },
+      el('span', { class: 'mini' }, `${ids.length} verse${ids.length === 1 ? '' : 's'}`),
+      STAGES.map((st, i) => c[i] ? el('span', { class: 'mini s' + i, title: `${c[i]} ${st.name.toLowerCase()} · ${st.desc}` }, icon(st.icon), String(c[i])) : null),
+      dueN ? el('span', { class: 'mini', title: `${dueN} due` }, icon('clock'), `${dueN} due`) : null);
+  }
+  function setProgress(c) {
+    return el('div', { class: 'setprog', title: `${learnedOf(c)} of ${c[0] + c[1] + c[2] + c[3]} learned` }, el('b', null, pctOf(c) + '%'), stageBar(c, true));
+  }
+
   // ---------- learning sessions ----------
   const MODES = [
     { id: 'flip', icon: 'turn', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' },
@@ -1489,14 +1612,12 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
   const setVerseIds = (st) => st.verseIds.filter(id => verses.some(v => v.id === id));
   function setRow(st, on) {
-    const ids = setVerseIds(st);
-    const learned = ids.filter(id => boxOf(id) >= 3).length, dueN = ids.filter(isDue).length;
+    const ids = setVerseIds(st), c = stageCounts(ids);
     const armed = pendingSetDelete === st.id;
     return el('div', { class: 'setrow' + (on ? ' on' : '') },
       el('button', { type: 'button', class: 'setpick', 'aria-pressed': String(on), onclick: () => { picked = new Set(ids); setName = st.name; renderSetup(); } },
-        el('strong', null, st.name),
-        el('span', null, `${ids.length} verse${ids.length === 1 ? '' : 's'} · ${learned} learned · ${dueN} due`)),
-      el('div', { class: 'bar', title: `${learned} of ${ids.length} at level 3 or higher` }, el('div', { style: `width:${ids.length ? Math.round(100 * learned / ids.length) : 0}%` })),
+        el('strong', null, st.name), stageMinis(ids, c)),
+      setProgress(c),
       el('button', { type: 'button', class: 'link danger' + (armed ? ' armed' : ''), onclick: () => {
         if (armed) { pendingSetDelete = null; storeSet(st, true); renderSetup(); }
         else { pendingSetDelete = st.id; renderSetup(); setTimeout(() => { if (pendingSetDelete === st.id) { pendingSetDelete = null; renderLearn(); } }, 4000); }
@@ -1589,14 +1710,18 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         el('div', { class: 'stat' }, el('b', null, icon('clock'), String(due.length)), el('span', null, 'due today')),
         el('div', { class: 'stat' }, el('b', null, flameIcon(), String(streak)), el('span', null, streak === 1 ? 'day in a row' : 'days in a row')),
         el('div', { class: 'stat' }, el('b', null, icon('book'), String(verses.length)), el('span', null, verses.length === 1 ? 'verse' : 'verses'))),
+      verses.length ? el('section', { class: 'panel' },
+        el('div', { class: 'learnhead' }, el('h2', null, icon('chart'), 'Your progress'),
+          el('span', { class: 'count' }, `${learnedOf(stageCounts(verses.map(v => v.id)))} of ${verses.length} learned`)),
+        progressOverview(verses.map(v => v.id))) : '',
       card,
       sets.length ? el('section', { class: 'panel' }, el('h2', null, icon('layers'), 'Learning sets'),
         el('div', { class: 'sets' }, sets.map(st => {
-          const ids = setVerseIds(st), learned = ids.filter(id => boxOf(id) >= 3).length;
+          const ids = setVerseIds(st), c = stageCounts(ids);
           return el('div', { class: 'setrow' },
             el('button', { type: 'button', class: 'setpick', onclick: () => { picked = new Set(ids); setName = st.name; setView('learn'); } },
-              el('strong', null, st.name), el('span', null, `${ids.length} verse${ids.length === 1 ? '' : 's'} · ${learned} learned · ${ids.filter(isDue).length} due`)),
-            el('div', { class: 'bar' }, el('div', { style: `width:${ids.length ? Math.round(100 * learned / ids.length) : 0}%` })));
+              el('strong', null, st.name), stageMinis(ids, c)),
+            setProgress(c));
         }))) : '',
       el('div', { class: 'quick' },
         el('button', { type: 'button', 'data-view': 'learn' }, icon('cards'), 'Learn'),
@@ -1708,8 +1833,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   function startSession(ids, remember) {
     let list = verses.filter(v => ids.includes(v.id));
     if (!list.length) return;
+    const st = sets.find(x => { const sid = setVerseIds(x); return sid.length === list.length && list.every(v => sid.includes(v.id)); });
     if (remember) {
-      const st = sets.find(x => { const sid = setVerseIds(x); return sid.length === list.length && list.every(v => sid.includes(v.id)); });
       progress.last = { verseIds: list.map(v => v.id), mode: learnMode, at: new Date().toISOString(), ...(st ? { setId: st.id } : {}) };
       saveProgress();
     }
@@ -1717,6 +1842,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     // Matching needs two verses; a single verse (e.g. "practise the tricky one again") is shown as a flip card.
     const mode = learnMode === 'match' && list.length < 2 ? 'flip' : learnMode;
     session = { mode, queue: list.map(v => v.id), idx: 0, turned: false, revealed: false, points: 0, gain: 0, streak: 0, best: 0, first: new Map(), finished: false };
+    // Levels before the session, for the before and after comparison in the summary.
+    session.before = Object.fromEntries(verses.map(v => [v.id, progress.verses[v.id] ? { ...progress.verses[v.id] } : null]));
+    if (st) session.setId = st.id;
     if (mode === 'match') { session.rounds = matchRounds(session.queue); session.round = 0; startRound(); }
     else if (mode === 'lightning') startLightning();
     else prepareCard();
@@ -2142,9 +2270,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       s.mode === 'lightning' ? el('p', { class: 'hint' }, `${s.right} of ${s.asked} answers right in one minute · `,
         s.right > s.prevBest ? el('b', null, 'a new personal best') : `your best is ${s.prevBest}`) : null,
       el('div', { class: 'stats' }, RATINGS.map((r, i) => el('div', { class: 'stat' }, el('b', null, String(counts[i])), el('span', null, r.name)))),
+      sessionProgress(s),
       el('div', { class: 'results' }, [...s.first].map(([id, r]) => {
         const v = verses.find(x => x.id === id);
-        return v ? el('div', null, el('span', { class: 'ppass' }, passageOf(verseTr(v))), el('span', { class: 'due' }, RATINGS[r].name), levelDots(id)) : null;
+        return v ? el('div', null, el('span', { class: 'ppass' }, passageOf(verseTr(v))), el('span', { class: 'due' }, RATINGS[r].name), levelChange(s, id), levelDots(id)) : null;
       })),
       el('div', { class: 'row' },
         again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, icon('again'), `Practise the ${again.length} tricky one${again.length === 1 ? '' : 's'} again`) : null,
@@ -2152,6 +2281,48 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         el('button', { type: 'button', onclick: () => { session = null; picked = null; renderSetup(); } }, icon('sliders'), 'New session'),
         el('button', { type: 'button', onclick: () => { session = null; setView('home'); } }, icon('check'), 'Done'))
     ));
+  }
+  function arrowIcon() { const i = icon('next'); i.classList.add('arrow'); return i; }
+  const boxBefore = (s, id) => (s.before[id] || {}).box || 0;
+  const stageBefore = (s) => (id) => stageOfEntry(id in s.before ? s.before[id] : progress.verses[id]);
+  function levelChange(s, id) {
+    const b = boxBefore(s, id), a = boxOf(id);
+    const dir = a > b ? 'up' : a < b ? 'down' : '';
+    return el('span', { class: 'lvchg ' + dir, title: `Level ${b} before, ${a} now` }, dir ? icon(dir === 'up' ? 'arrowup' : 'arrowdown') : null, `Level ${b} → ${a}`);
+  }
+  // Before and after: levels gained, verses learned and mastered, and the share learned of all verses and of the set.
+  function sessionProgress(s) {
+    const ids = [...s.first.keys()].filter(id => verses.some(v => v.id === id));
+    if (!ids.length) return null;
+    const was = stageCounts(ids, stageBefore(s)), now = stageCounts(ids);
+    const levels = ids.reduce((sum, id) => sum + boxOf(id) - boxBefore(s, id), 0);
+    const delta = (cls, ic, before, after, label, good) => el('div', { class: 'delta ' + cls + (good ? ' good' : '') },
+      el('b', null, icon(ic), el('span', { class: 'was' }, String(before)), arrowIcon(),
+        el('span', { class: after > before ? 'up' : after < before ? 'down' : '' }, String(after))),
+      el('span', null, label));
+    const scope = (name, all) => {
+      const b = stageCounts(all, stageBefore(s)), a = stageCounts(all);
+      const pb = pctOf(b), pa = pctOf(a);
+      return el('div', { class: 'scope' }, progressRing(a, true),
+        el('div', { class: 'sname' }, el('strong', null, name), stageBar(a, true)),
+        el('span', { class: 'pcts', title: `${pb}% learned before, ${pa}% now` }, el('span', { class: 'was' }, pb + '%'), icon('next'),
+          el('b', { class: pa > pb ? 'up' : pa < pb ? 'down' : '' }, pa + '%')));
+    };
+    const st = s.setId && sets.find(x => x.id === s.setId);
+    const lv = el('div', { class: 'delta' + (levels > 0 ? ' good' : '') },
+      el('b', null, icon('trend'), el('span', { class: levels > 0 ? 'up' : levels < 0 ? 'down' : '' }, (levels > 0 ? '+' : '') + levels)),
+      el('span', null, Math.abs(levels) === 1 ? 'level' : 'levels'));
+    return el('div', { class: 'scopes' },
+      el('h3', { class: 'subhead' }, 'Your progress'),
+      el('div', { class: 'deltas' }, lv,
+        delta('s2', 'learned', learnedOf(was), learnedOf(now), 'learned', learnedOf(now) > learnedOf(was)),
+        delta('s3', 'trophy', was[3], now[3], 'mastered', now[3] > was[3])),
+      el('div', { class: 'compare' },
+        el('span', null, 'Before'), stageBar(was), el('b', null, pctOf(was) + '%'),
+        el('span', null, 'After'), stageBar(now), el('b', null, pctOf(now) + '%')),
+      el('div', { class: 'minis' }, STAGES.map((x, i) => el('span', { class: 'mini s' + i }, icon(x.icon), x.name))),
+      st ? scope(st.name, setVerseIds(st)) : null,
+      scope('All verses', verses.map(v => v.id)));
   }
   document.addEventListener('keydown', (e) => {
     if (view !== 'learn' || !session || session.finished || session.mode === 'match' || $('tutorial').open || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -2230,7 +2401,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     { kicker: 'Scoring', icon: 'layers', title: 'Levels bring verses back at the right time',
       text: [el('p', null, 'Each verse has a level from 0 to 6, shown as dots. ', el('b', null, 'Got it'), ' moves it up one level, ', el('b', null, 'Perfect'), ' two, ',
         el('b', null, 'Shaky'), ' down one (but not below 1) and ', el('b', null, 'Not yet'), ' back to 0.'),
-        el('p', null, 'The higher the level, the longer until the verse is due again. Only your first rating of a verse in a session changes its level. From level 3 a verse counts as learned.')],
+        el('p', null, 'The higher the level, the longer until the verse is due again. Only your first rating of a verse in a session changes its level. From level 3 a verse counts as learned, from level 5 as mastered.')],
       demo: () => {
         const DUE = ['today', '1 day', '2 days', '4 days', '8 days', '16 days', '32 days'];
         const path = [[0, null], [1, 2], [2, 2], [4, 3], [3, 1], [0, 0]];
