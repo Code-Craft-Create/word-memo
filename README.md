@@ -1,4 +1,4 @@
-# word-memo
+# Word Memo
 
 An app for memorising Bible verses. It's a single page of plain HTML and JavaScript, with no build step. Verses can be shared between people and devices through a free Firebase project.
 
