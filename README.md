@@ -10,6 +10,7 @@ Open `index.html` in a browser.
 
 - Add a verse with a passage, an optional translation and the text. Earlier translations are suggested.
 - Add several translations of the same verse, and switch between them on the board.
+- Star a favourite translation per verse (on the board card or in the form). It is shown first on the board and used for learning; during a session you can switch to another translation of the same verse with one tap.
 - Tag verses with free-text tags. Earlier tags are suggested, and you can filter the board by tag.
 - Highlight key words by selecting them, either on the board or in the form.
 - Edit or delete verses.
