@@ -133,6 +133,10 @@ button.bookbtn > svg.ic { color: var(--muted); }
 #settings select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
 .tradd input[type=text] { flex: 2 1 10rem; width: auto; min-width: 0; }
 .tradd input#trCode { flex: 1 1 7rem; }
+.mergeadd input[type=text] { flex: 1 1 12rem; width: auto; min-width: 0; }
+.mergeconfirm { border: 1px solid var(--danger); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.mergeconfirm p { margin: 0; font-size: .9rem; }
+button.dangerbtn { background: var(--danger); border-color: var(--danger); color: var(--surface); font-weight: 600; }
 
 .taginput { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
 .taginput:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -401,6 +405,20 @@ button.opt.right { border-color: var(--ok); color: var(--ok); box-shadow: inset 
     </section>
 
     <section class="panel">
+      <h2 data-icon="tag">Merge tags</h2>
+      <p class="hint">Pick the tags to merge and type the new tag. On every verse that has any of them, they are replaced by the new tag. This changes the shared verses and cannot be undone.</p>
+      <div id="mergeTags" class="suggestions"></div>
+      <div class="row mergeadd">
+        <input id="mergeName" type="text" list="mergeTagList" placeholder="New tag" aria-label="New tag" autocomplete="off">
+        <button id="btnMerge" type="button" data-icon="tag">Merge…</button>
+      </div>
+      <datalist id="mergeTagList"></datalist>
+      <div id="mergeConfirm" class="mergeconfirm" hidden></div>
+      <div id="mergeErr" class="err"></div>
+      <span id="mergeMsg" class="toast" aria-live="polite"></span>
+    </section>
+
+    <section class="panel">
       <h2 data-icon="download">Back up (export)</h2>
       <p class="hint">Downloads all verses as a JSON file. You can also copy the JSON and save it as a <code>.json</code> file.</p>
       <div class="row"><button id="btnExport" type="button" class="primary" data-icon="download">Export JSON</button></div>
@@ -443,7 +461,7 @@ button.opt.right { border-color: var(--ok); color: var(--ok); box-shadow: inset 
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.13 (17 Oct 2026)';
+  const APP_VERSION = '1.14 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -483,7 +501,8 @@ button.opt.right { border-color: var(--ok); color: var(--ok); box-shadow: inset 
     down: '<path d="m6 9 6 6 6-6"/>',
     arrange: '<rect x="3" y="4" width="18" height="4" rx="1.5"/><rect x="3" y="10" width="11" height="4" rx="1.5"/><rect x="3" y="16" width="15" height="4" rx="1.5"/>',
     build: '<path d="M3 21h18"/><rect x="5" y="15" width="14" height="4" rx="1"/><rect x="7" y="9" width="10" height="4" rx="1"/><rect x="9" y="3" width="6" height="4" rx="1"/>',
-    bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>'
+    bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+    tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>'
   };
   function icon(name) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -2078,7 +2097,7 @@ button.opt.right { border-color: var(--ok); color: var(--ok); box-shadow: inset 
     else if (s.revealed && /^[1-4]$/.test(k)) rate(+k - 1);
   });
 
-  function renderAll() { renderTranslationList(); renderTranslationSettings(); renderDraftTags(); renderFilters(); renderBoard(); renderLearn(); renderHome(); }
+  function renderAll() { renderTranslationList(); renderTranslationSettings(); renderMergeTags(); renderDraftTags(); renderFilters(); renderBoard(); renderLearn(); renderHome(); }
 
   // ---------- settings: translations ----------
   // Shared like the verses: in this browser's storage, or in shared mode in the Firestore document `config/translations`.
@@ -2131,6 +2150,68 @@ button.opt.right { border-color: var(--ok); color: var(--ok); box-shadow: inset 
   }
   $('btnAddTr').addEventListener('click', addTranslation);
   [$('trCode'), $('trName')].forEach(i => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addTranslation(); } }));
+
+  // ---------- settings: merge tags ----------
+  let mergePicked = new Set();
+  let mergeArmed = false; // the confirmation is showing
+  function mergePlan() {
+    let name = norm($('mergeName').value).replace(/,+$/, '');
+    // Typing an existing tag in other letter case reuses that tag.
+    const existing = tagCounts().find(([k]) => k.toLowerCase() === name.toLowerCase() && !mergePicked.has(k));
+    if (existing) name = existing[0];
+    const affected = verses.filter(v => v.tags.some(t => mergePicked.has(t)));
+    return { name, affected };
+  }
+  function renderMergeTags() {
+    const tc = tagCounts();
+    mergePicked = new Set([...mergePicked].filter(t => tc.some(([k]) => k === t)));
+    $('mergeTags').replaceChildren(...tc.map(([t, n]) => {
+      const on = mergePicked.has(t);
+      return el('button', { type: 'button', class: 'chip' + (on ? ' on' : ' suggest'), 'aria-pressed': String(on),
+        onclick: () => { on ? mergePicked.delete(t) : mergePicked.add(t); disarmMerge(); renderMergeTags(); } }, `${t} · ${n}`);
+    }), ...(tc.length ? [] : [el('p', { class: 'hint' }, 'No tags yet.')]));
+    $('mergeTagList').replaceChildren(...tc.map(([t]) => el('option', { value: t })));
+    if (mergeArmed) renderMergeConfirm();
+  }
+  function disarmMerge() { mergeArmed = false; $('mergeConfirm').hidden = true; }
+  function renderMergeConfirm() {
+    const { name, affected } = mergePlan();
+    const tags = [...mergePicked];
+    if (!affected.length) { disarmMerge(); return; }
+    $('mergeConfirm').replaceChildren(
+      el('p', null, `Replace ${tags.map(t => '"' + t + '"').join(', ')} with "${name}" on ${affected.length} verse${affected.length === 1 ? '' : 's'}? This cannot be undone.`),
+      el('div', { class: 'row' },
+        el('button', { type: 'button', class: 'dangerbtn', onclick: doMerge }, icon('tag'), `Merge into "${name}"`),
+        el('button', { type: 'button', onclick: disarmMerge }, 'Cancel')));
+    $('mergeConfirm').hidden = false;
+  }
+  $('btnMerge').addEventListener('click', () => {
+    $('mergeErr').textContent = ''; $('mergeMsg').textContent = '';
+    const { name } = mergePlan();
+    if (!mergePicked.size) { $('mergeErr').textContent = 'Pick the tags to merge first.'; return; }
+    if (!name) { $('mergeErr').textContent = 'Type the new tag.'; $('mergeName').focus(); return; }
+    if (mergePicked.size === 1 && mergePicked.has(name)) { $('mergeErr').textContent = 'Pick another tag or type a different name.'; return; }
+    mergeArmed = true; renderMergeConfirm();
+  });
+  $('mergeName').addEventListener('input', () => { $('mergeErr').textContent = ''; if (mergeArmed) renderMergeConfirm(); });
+  $('mergeName').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('btnMerge').click(); } });
+  function doMerge() {
+    const { name, affected } = mergePlan();
+    if (!name || !affected.length) { disarmMerge(); return; }
+    const now = new Date().toISOString();
+    affected.forEach(v => {
+      const tags = [];
+      v.tags.forEach(t => { const n = mergePicked.has(t) ? name : t; if (!tags.includes(n)) tags.push(n); });
+      v.tags = tags; v.updatedAt = now;
+    });
+    if (activeTag && mergePicked.has(activeTag)) activeTag = name;
+    // A verse open in the edit form keeps the merged tags when it is saved.
+    draftTags = [...new Set(draftTags.map(t => mergePicked.has(t) ? name : t))];
+    const count = affected.length;
+    mergePicked = new Set(); disarmMerge(); $('mergeName').value = '';
+    save(); renderAll();
+    $('mergeMsg').textContent = `Merged into "${name}" on ${count} verse${count === 1 ? '' : 's'}.`;
+  }
 
   // ---------- export ----------
   function exportJson() {
