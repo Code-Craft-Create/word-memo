@@ -176,7 +176,8 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 .formbtns > .primary { flex: 1; }
 .panel.editing { border-color: var(--accent); }
 .card.editing { outline: 2px solid var(--accent); outline-offset: -1px; }
-.card .actions { display: flex; gap: 4px; margin-left: auto; }
+.card .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; margin-left: auto; }
+.card .actions button.link { white-space: nowrap; }
 .card blockquote::selection, .card blockquote *::selection { background: var(--accent-soft); }
 .hlpop { position: absolute; z-index: 20; display: flex; gap: 2px; padding: 4px; background: var(--ink); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.25); transform: translate(-50%, calc(-100% - 8px)); }
 .hlpop button { border: 0; background: transparent; color: var(--bg); font-size: .85rem; padding: 5px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; }
@@ -578,6 +579,15 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     </section>
 
     <section class="panel">
+      <h2 data-icon="again">Reset learning progress</h2>
+      <p class="hint">Sets every verse back to New, as if you had never practised it. Only your own progress is reset; the verses and the other person's progress stay as they are. To reset a single verse, use Reset progress on its card under All verses.</p>
+      <label class="check"><input id="resetExtras" type="checkbox"> Also clear my day streak and Lightning round best</label>
+      <div class="row"><button id="btnReset" type="button" data-icon="again">Reset all…</button></div>
+      <div id="resetConfirm" class="mergeconfirm" hidden></div>
+      <span id="resetMsg" class="toast" aria-live="polite"></span>
+    </section>
+
+    <section class="panel">
       <h2 data-icon="download">Back up (export)</h2>
       <p class="hint">Downloads all verses as a JSON file. You can also copy the JSON and save it as a <code>.json</code> file.</p>
       <div class="row"><button id="btnExport" type="button" class="primary" data-icon="download">Export JSON</button></div>
@@ -622,7 +632,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.16 (17 Oct 2026)';
+  const APP_VERSION = '1.17 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -907,6 +917,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   let draftTags = [];
   let activeTag = null;
   let pendingDelete = null;
+  let pendingReset = null; // verse whose Reset progress was clicked once
   let editingId = null;
   const shownVersion = new Map(); // verse id -> index of the translation shown on its card
 
@@ -1284,7 +1295,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       return;
     }
     $('board').replaceChildren(...shown.map(v => {
-      const armed = pendingDelete === v.id;
+      const armed = pendingDelete === v.id, resetArmed = pendingReset === v.id;
       const idx = Math.min(shownVersion.has(v.id) ? shownVersion.get(v.id) : favIndex(v), v.translations.length - 1);
       const cur = v.translations[idx];
       let picker = null;
@@ -1311,6 +1322,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
           el('div', { class: 'actions' },
             levelDots(v.id),
             el('button', { type: 'button', class: 'link', onclick: () => startEdit(v) }, icon('edit'), 'Edit'),
+            progress.verses[v.id] ? el('button', { type: 'button', class: 'link' + (resetArmed ? ' armed' : ''), title: 'Set this verse back to New in your own progress', onclick: () => {
+              if (resetArmed) { pendingReset = null; resetVerse(v.id); }
+              else { pendingReset = v.id; renderBoard(); setTimeout(() => { if (pendingReset === v.id) { pendingReset = null; renderBoard(); } }, 4000); }
+            } }, icon('again'), resetArmed ? 'Click again to reset' : 'Reset progress') : null,
             el('button', { type: 'button', class: 'link danger' + (armed ? ' armed' : ''), onclick: () => {
               if (armed) { if (editingId === v.id) stopEdit(); verses = verses.filter(x => x.id !== v.id); pendingDelete = null; save(); renderAll(); }
               else { pendingDelete = v.id; renderBoard(); setTimeout(() => { if (pendingDelete === v.id) { pendingDelete = null; renderBoard(); } }, 4000); }
@@ -2677,6 +2692,35 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     mergePicked = new Set(); disarmMerge(); $('mergeName').value = '';
     save(); renderAll();
     $('mergeMsg').textContent = `Merged into "${name}" on ${count} verse${count === 1 ? '' : 's'}.`;
+  }
+
+  // ---------- settings: reset learning progress ----------
+  // Only the signed-in person's progress is touched; verses and learning sets are left alone.
+  function disarmReset() { $('resetConfirm').hidden = true; }
+  $('btnReset').addEventListener('click', () => {
+    $('resetMsg').textContent = '';
+    const n = Object.keys(progress.verses).length, extras = $('resetExtras').checked;
+    if (!n && !extras) { $('resetMsg').textContent = 'There is no progress to reset yet.'; return; }
+    $('resetConfirm').replaceChildren(
+      el('p', null, `Reset your progress on ${n} verse${n === 1 ? '' : 's'} to New${extras ? ' and clear your day streak and Lightning round best' : ''}? This cannot be undone.`),
+      el('div', { class: 'row' },
+        el('button', { type: 'button', class: 'dangerbtn', onclick: doReset }, icon('again'), 'Reset my progress'),
+        el('button', { type: 'button', onclick: disarmReset }, 'Cancel')));
+    $('resetConfirm').hidden = false;
+  });
+  $('resetExtras').addEventListener('change', disarmReset);
+  function doReset() {
+    const n = Object.keys(progress.verses).length, extras = $('resetExtras').checked;
+    progress.verses = {};
+    if (extras) { progress.days = []; delete progress.best; }
+    disarmReset(); $('resetExtras').checked = false;
+    saveProgress(); renderAll();
+    $('resetMsg').textContent = `Reset ${n} verse${n === 1 ? '' : 's'} to New${extras ? ', streak and best cleared' : ''}.`;
+  }
+  // Resets one verse to New for the signed-in person.
+  function resetVerse(id) {
+    delete progress.verses[id];
+    saveProgress(); renderAll();
   }
 
   // ---------- export ----------
