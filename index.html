@@ -218,7 +218,7 @@ button.star.on, .chip .star.on { color: var(--warn); }
 .trswitch .star svg { width: 13px; height: 13px; }
 .lvl { display: inline-flex; gap: 3px; align-items: center; padding: 0 4px; }
 .lvl i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
-.lvl i.on { background: var(--accent); }
+.lvl i.on { background: var(--c, var(--accent)); }
 
 /* Learning: a setup panel (pick verses, mode, options), then one card at a time that turns around, then a summary. */
 .learn { max-width: 760px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
@@ -452,13 +452,14 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 .drun .r0 { color: var(--danger); } .drun .r1 { color: var(--warn); } .drun .r2 { color: var(--accent); } .drun .r3 { color: var(--ok); }
 .drun > div > span:first-of-type { color: var(--ink); }
 .dstairs { position: relative; width: 100%; height: 132px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; align-items: end; }
-.dstairs .stp { border-radius: 6px 6px 0 0; background: var(--accent-soft); border: 1px solid var(--line); border-bottom: 0; display: flex; align-items: flex-end; justify-content: center; font-size: .72rem; color: var(--muted); padding-bottom: 3px; transition: background .3s; }
-.dstairs .stp.on { background: var(--accent); color: var(--surface); }
+.dstairs .stp { border-radius: 6px 6px 0 0; background: color-mix(in srgb, var(--c) 22%, var(--surface)); border: 1px solid var(--line); border-bottom: 0; display: flex; align-items: flex-end; justify-content: center; font-size: .72rem; color: var(--muted); padding-bottom: 3px; transition: background .3s; }
+.dstairs .stp.on { background: var(--c); color: var(--surface); }
 .dstairs .tok { position: absolute; width: calc((100% - 24px) / 7); display: flex; justify-content: center; transition: left .6s cubic-bezier(.3, 1.4, .5, 1), bottom .6s cubic-bezier(.3, 1.4, .5, 1); }
-.dstairs .tok span { width: 30px; height: 22px; border-radius: 5px; background: var(--surface); border: 2px solid var(--accent); box-shadow: 0 3px 8px rgba(0,0,0,.15); display: flex; align-items: center; justify-content: center; color: var(--accent); }
+.dstairs .tok span { width: 30px; height: 22px; border-radius: 5px; background: var(--surface); border: 2px solid var(--c); box-shadow: 0 3px 8px rgba(0,0,0,.15); display: flex; align-items: center; justify-content: center; color: var(--ci); transition: border-color .3s, color .3s; }
 .dstairs .tok svg.ic { width: 14px; height: 14px; }
 .dlabels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: 100%; font-size: .68rem; color: var(--muted); text-align: center; margin-top: -6px; }
-.dlabels span.on { color: var(--accent); font-weight: 600; }
+.dlabels span.on { color: var(--ci); font-weight: 600; }
+.demo .cap .stg { color: var(--ci); font-weight: 600; }
 .ddays { display: flex; gap: 8px; }
 .ddays > div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: .72rem; color: var(--muted); }
 .ddays i { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--surface); transition: background .3s, border-color .3s, transform .3s; }
@@ -674,7 +675,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.24 (17 Oct 2026)';
+  const APP_VERSION = '1.25 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -1580,8 +1581,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   const startBoxOf = (p) => p ? (p.startDay === dayStr() ? p.startBox : p.box) : 0;
   const dailyLimitReached = (id) => { const p = progress.verses[id]; return !!p && p.box < MAX_BOX && p.box >= startBoxOf(p) + DAILY_RISE; };
   function levelDots(id) {
-    const b = boxOf(id), label = `Level ${b} of ${MAX_BOX} · ${dueLabel(id)}` + (dailyLimitReached(id) ? ' · +2 today, more tomorrow' : '');
-    return el('span', { class: 'lvl', title: label, role: 'img', 'aria-label': label },
+    const b = boxOf(id), st = stageOf(id), label = `${STAGES[st].name} · Level ${b} of ${MAX_BOX} · ${dueLabel(id)}` + (dailyLimitReached(id) ? ' · +2 today, more tomorrow' : '');
+    return el('span', { class: 'lvl s' + st, title: label, role: 'img', 'aria-label': label },
       Array.from({ length: MAX_BOX }, (_, i) => el('i', { class: i < b ? 'on' : '' })));
   }
   // Moves a verse up or down after its first rating in a session. Going down always counts. Going up is limited to
@@ -2545,17 +2546,19 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       demo: () => {
         const DUE = ['today', '1 day', '2 days', '4 days', '8 days', '16 days', '32 days'];
         const path = [[0, null], [1, 2], [2, 2], [4, 3], [3, 1], [0, 0]];
-        const stps = DUE.map((_, i) => el('div', { class: 'stp', style: `height:${16 + i * 16}px` }, String(i)));
+        const stps = DUE.map((_, i) => el('div', { class: 'stp s' + stageOfEntry({ box: i }), style: `height:${16 + i * 16}px` }, String(i)));
         const tok = el('div', { class: 'tok' }, el('span', null, icon('book')));
-        const labels = DUE.map(d => el('span', null, d));
+        const labels = DUE.map((d, i) => el('span', { class: 's' + stageOfEntry({ box: i }) }, d));
         const cap = el('div', { class: 'cap' });
         return { node: [el('div', { class: 'dstairs' }, stps, tok), el('div', { class: 'dlabels' }, labels), cap], frames: path.length + 1, ms: 1500, show: (f) => {
           const [lvl, r] = path[Math.min(f, path.length - 1)];
           tok.style.left = `calc(${lvl} * (100% + 4px) / 7)`;
           tok.style.bottom = `${16 + lvl * 16 + 4}px`;
+          const st = r == null ? 0 : stageOfEntry({ box: lvl });
+          tok.className = 'tok s' + st;
           stps.forEach((x, i) => x.classList.toggle('on', i === lvl));
           labels.forEach((x, i) => x.classList.toggle('on', i === lvl));
-          cap.replaceChildren(...(r == null ? ['A new verse starts at level 0'] : [el('b', null, RATINGS[r].name), ` · level ${lvl} · due ${lvl ? 'in ' + DUE[lvl] : 'again today'}`]));
+          cap.replaceChildren(...(r == null ? ['A new verse starts at level 0'] : [el('b', null, RATINGS[r].name), ` · level ${lvl} · `, el('span', { class: 'stg s' + st }, STAGES[st].name), ` · due ${lvl ? 'in ' + DUE[lvl] : 'again today'}`]));
         } };
       } },
     { kicker: 'Scoring', icon: 'flame', title: 'Keep your day streak',
