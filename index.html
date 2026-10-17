@@ -241,6 +241,7 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
 .hud .gain { color: var(--ok); font-weight: 600; }
 .bar { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; }
 .bar > div { height: 100%; background: var(--accent); border-radius: inherit; transition: width .3s; }
+.bar > div.live { transition: none; }
 .flip { perspective: 1400px; cursor: pointer; border-radius: 14px; }
 .flip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .flip-inner { display: grid; transition: transform .45s ease; transform-style: preserve-3d; }
@@ -651,7 +652,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.19 (17 Oct 2026)';
+  const APP_VERSION = '1.20 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -1930,7 +1931,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     }
     if (learnShuffle) list = shuffle(list);
     // Matching needs two verses; a single verse (e.g. "practise the tricky one again") is shown as a flip card.
-    const mode = learnMode === 'match' && list.length < 2 ? 'flip' : learnMode;
+    // Lightning round needs other verses for its wrong answers too.
+    const mode = (learnMode === 'match' && list.length < 2) || (learnMode === 'lightning' && !list.some(lightningQuestion)) ? 'flip' : learnMode;
     session = { mode, queue: list.map(v => v.id), idx: 0, turned: false, revealed: false, points: 0, gain: 0, streak: 0, best: 0, first: new Map(), limited: new Set(), finished: false };
     // Levels before the session, for the before and after comparison in the summary.
     session.before = Object.fromEntries(verses.map(v => [v.id, progress.verses[v.id] ? { ...progress.verses[v.id] } : null]));
@@ -1997,11 +1999,6 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     }
     if (cur.length) { if (cur.length === 1 && out.length) out[out.length - 1].push(cur[0]); else out.push(cur); }
     return out.length ? out.map(p => p.join(' ')) : [text];
-  }
-  // Texts of the other verses in the same language as `t`, to draw wrong answers from.
-  function otherTexts(v, t) {
-    const lang = langOf(t.translation);
-    return verses.filter(x => x.id !== v.id).flatMap(x => x.translations).filter(x => langOf(x.translation) === lang).map(x => x.text);
   }
   function fadedText(text, reveal) {
     return tokenize(text).map((tk, i) => !session.hidden.has(i)
@@ -2200,11 +2197,19 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       if (session !== s || s.finished) return clearInterval(s.timer);
       const left = s.endsAt - Date.now();
       if (left <= 0) { clearInterval(s.timer); s.finished = true; renderSession(); return; }
-      const t = $('lnTime'), b = $('lnBar');
+      const t = $('lnTime');
       if (t) t.textContent = clockText(left);
-      if (b) b.style.width = Math.round(100 * left / LIGHTNING_MS) + '%';
     }, 250);
+    // The bar shrinks on every frame, so it moves smoothly instead of in steps.
+    const frame = () => {
+      if (session !== s || s.finished) return;
+      const b = $('lnBar');
+      if (b) b.style.width = barWidth(s);
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
   }
+  const barWidth = (s) => (100 * Math.max(0, s.endsAt - Date.now()) / LIGHTNING_MS).toFixed(2) + '%';
   // Goes through the verses in turn, shuffled again after each pass.
   function lightningNext() {
     const s = session;
@@ -2220,27 +2225,31 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     }
     s.q = null;
   }
-  // "Which passage is this?" (needs another verse for wrong answers) or "Which word is missing?".
+  // About the first two lines of a verse, cut at a word.
+  const BEGIN_CHARS = 70;
+  function beginningOf(text) {
+    const words = text.trim().split(/\s+/);
+    let out = '';
+    for (const w of words) { if (out && (out + ' ' + w).length > BEGIN_CHARS) return out.replace(/[\s,;:.!?–—-]+$/, '') + ' …'; out = out ? out + ' ' + w : w; }
+    return out;
+  }
+  // "Which passage is this?" (text → passage) or "How does it begin?" (passage → start of the verse).
+  // Both need other verses for the wrong answers.
   function lightningQuestion(v) {
     const t = verseTr(v), key = refKey(t);
-    // Wrong passages come from verses in the same language first, so the language alone doesn't give the answer away.
+    // Wrong answers come from verses in the same language first, so the language alone doesn't give the answer away.
     const lang = langOf(t.translation), others = verses.filter(x => x.id !== v.id).map(verseTr).filter(x => refKey(x) !== key);
     const same = shuffle(others.filter(x => langOf(x.translation) === lang)), rest = shuffle(others.filter(x => langOf(x.translation) !== lang));
     const refs = [...new Map([...same, ...rest].map(x => [refKey(x), passageOf(x)])).values()];
-    const toks = tokenize(t.text);
-    // Words of four letters or more make better gaps; shorter ones only when there are none.
-    const longer = (n) => toks.map((tk, i) => [...tk.core].length >= n ? i : -1).filter(i => i >= 0);
-    const gaps = longer(4).length ? longer(4) : longer(3);
-    const words = [...new Set([...toks, ...otherTexts(v, t).flatMap(tokenize)].map(tk => tk.core).filter(c => [...c].length >= 3))];
+    const start = beginningOf(t.text);
+    const starts = [...new Set([...same, ...rest].map(x => beginningOf(x.text)))].filter(b => b && b !== start);
     const kinds = [];
     if (refs.length) kinds.push('which');
-    if (gaps.length && words.length > 1) kinds.push('gap');
+    if (starts.length) kinds.push('begin');
     if (!kinds.length) return null;
     const kind = kinds[Math.floor(Math.random() * kinds.length)];
     if (kind === 'which') { const answer = passageOf(t); return { id: v.id, kind, t, answer, options: shuffle([answer, ...refs.slice(0, 3)]) }; }
-    const gap = gaps[Math.floor(Math.random() * gaps.length)], answer = toks[gap].core;
-    const wrong = shuffle(words.filter(c => c.toLowerCase() !== answer.toLowerCase())).slice(0, 3);
-    return { id: v.id, kind, t, gap, answer, options: shuffle([answer, ...wrong]) };
+    return { id: v.id, kind, t, answer: start, options: shuffle([start, ...starts.slice(0, 3)]) };
   }
   function renderLightning() {
     const s = session, q = s.q, f = s.picked;
@@ -2248,15 +2257,14 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const left = s.endsAt - Date.now();
     const body = q.kind === 'which'
       ? [el('div', { class: 'kicker' }, 'Which passage is this?'), el('div', { class: 'vtxt' }, q.t.text)]
-      : [el('div', { class: 'kicker' }, 'Which word is missing? · ' + passageOf(q.t)),
-        el('div', { class: 'vtxt' }, tokenize(q.t.text).map((tk, i) => i !== q.gap ? tk.pre + tk.core + tk.post : [tk.pre, el('span', { class: f ? 'gapword' : 'gap' }, tk.core), tk.post]).flat())];
+      : [el('div', { class: 'kicker' }, 'How does it begin?'), el('div', { class: 'big' }, passageOf(q.t))];
     $('learn').replaceChildren(
       el('div', { class: 'hud' },
         el('span', { class: 'clock' }, icon('clock'), el('b', { id: 'lnTime' }, clockText(left))),
         el('span', null, el('b', null, String(s.points)), ' points', s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
         el('span', null, el('b', null, String(s.right)), ' right'),
         el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), 'End session')),
-      el('div', { class: 'bar', role: 'presentation' }, el('div', { id: 'lnBar', style: `width:${Math.round(100 * Math.max(0, left) / LIGHTNING_MS)}%` })),
+      el('div', { class: 'bar', role: 'presentation' }, el('div', { id: 'lnBar', class: 'live', style: `width:${barWidth(s)}` })),
       el('div', { class: 'face stage' }, body),
       el('div', { class: 'opts two' }, q.options.map(o =>
         el('button', { type: 'button', class: 'opt' + (f && o === q.answer ? ' right' : '') + (f === o && o !== q.answer ? ' wrong' : ''), onclick: () => lightningPick(o) }, o))),
@@ -2592,12 +2600,12 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
           under.replaceChildren(f > n ? ratingRow(f === n + 2 ? 2 : null) : '');
         } };
       } },
-    { mode: 'lightning', text: [el('p', null, 'One minute of quick questions about the verses you picked: which passage is this, or which word is missing. Try to beat your best.'),
+    { mode: 'lightning', text: [el('p', null, 'One minute of quick questions about the verses you picked: which passage is this, or how does this passage begin. Try to beat your best.'),
         el('p', null, 'A right answer counts as ', el('b', null, 'Got it'), ' with points, a wrong one as ', el('b', null, 'Shaky'), ' without points.')],
       demo: () => {
         const Q = [
-          { kicker: 'Which word is missing?', text: ['Your word is a ', 'lamp', ' to my feet and a light to my path.'], options: ['lamp', 'path', 'light', 'word'], answer: 0 },
-          { kicker: 'Which passage is this?', text: ['Be strong and courageous. Do not be frightened…'], options: ['Psalm 119:105', 'Joshua 1:9', 'John 3:16', 'Philippians 4:6'], answer: 1 }
+          { kicker: 'How does it begin?', ref: 'Psalm 119:105', options: ['Your word is a lamp to my feet and a light to my path.', 'Be strong and courageous. Do not be frightened …', 'For God so loved the world, that he gave his only Son …', 'Do not be anxious about anything, but in everything …'], answer: 0 },
+          { kicker: 'Which passage is this?', text: 'Be strong and courageous. Do not be frightened…', options: ['Psalm 119:105', 'Joshua 1:9', 'John 3:16', 'Philippians 4:6'], answer: 1 }
         ];
         const time = el('b'), right = el('b'), barIn = el('div'), face = el('div', { class: 'face stage' }), opts = el('div', { class: 'opts two' });
         return { node: [el('div', { class: 'dhud' }, el('span', { class: 'clock' }, icon('clock'), time), el('span', null, right, ' right')), el('div', { class: 'bar' }, barIn), face, opts], frames: 6, ms: 1000, show: (f) => {
@@ -2606,7 +2614,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
           time.textContent = `0:${String(sec).padStart(2, '0')}`;
           barIn.style.width = Math.round(100 * sec / 60) + '%';
           right.textContent = String((f >= 1 ? 1 : 0) + (f >= 4 ? 1 : 0));
-          face.replaceChildren(el('div', { class: 'kicker' }, q.kicker), el('div', { class: 'vtxt' }, q.text.length > 1 ? [q.text[0], el('span', { class: picked ? 'gapword' : 'gap' }, q.text[1]), q.text[2]] : q.text[0]));
+          face.replaceChildren(el('div', { class: 'kicker' }, q.kicker), q.ref ? el('div', { class: 'big' }, q.ref) : el('div', { class: 'vtxt' }, q.text));
           opts.replaceChildren(...q.options.map((o, i) => el('button', { type: 'button', tabindex: '-1', class: 'opt' + (picked && i === q.answer ? ' right' : '') }, o)));
         } };
       } }
