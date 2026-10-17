@@ -11,6 +11,7 @@ Open `index.html` in a browser.
 - A home screen shows what's due, your days in a row, the verses of your last set or session (with a button to continue), and your learning sets. A menu (top right) leads to Learn, All verses, Add a verse, and Settings & backup (account, sign out, export, import).
 - Add a verse with a passage, an optional translation and the text. Earlier translations are suggested.
 - "Look up on Bibleserver" opens the passage in that translation on bibleserver.com, so you can copy the text in (the app does not fetch copyrighted text itself). NGÜ, Schlachter 2000 (SLT, SLT2000, SCH2000) and NIV are recognised under their usual names; other abbreviations are passed on as typed.
+- "Compare all your translations on Bibleserver" opens the passage once in every translation used so far (and any typed in the form), one after another.
 - Add several translations of the same verse, and switch between them on the board.
 - Star a favourite translation per verse (on the board card or in the form). It is shown first on the board and used for learning; during a session you can switch to another translation of the same verse with one tap.
 - Tag verses with free-text tags. Earlier tags are suggested, and you can filter the board by tag.
