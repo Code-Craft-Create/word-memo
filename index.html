@@ -61,11 +61,16 @@ button.brand:hover .h1 { color: var(--accent); }
 button.iconbtn { padding: 8px; line-height: 0; }
 .iconbtn svg { width: 22px; height: 22px; }
 .menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 210px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 6px; display: flex; flex-direction: column; }
-.menu button { border: 0; background: none; text-align: left; padding: 10px 12px; border-radius: 6px; }
+nav.menu button { border: 0; background: none; text-align: left; padding: 10px 12px; border-radius: 6px; justify-content: flex-start; gap: 10px; }
+#menu button { justify-content: flex-start; }
+.menu button > svg.ic { color: var(--muted); }
+.menu button:hover > svg.ic, .menu button[aria-current="page"] > svg.ic { color: inherit; }
 .menu button:hover, .menu button[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
 .home { max-width: 760px; width: 100%; margin: 0 auto; }
 .today { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.today .stat b { font-size: 1.6rem; }
+.today .stat b { font-size: 1.6rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.today .stat b svg.ic { width: .75em; height: .75em; color: var(--accent); }
+.today .stat b svg.ic.flame { color: var(--warn); }
 .lastcard { border-color: var(--accent); }
 .lastcard .learnhead h2 { font-family: var(--font-verse); font-size: 1.3rem; }
 .vlist { display: flex; flex-direction: column; }
@@ -74,10 +79,12 @@ button.iconbtn { padding: 8px; line-height: 0; }
 .vitem .vt { grid-column: 1 / -1; font-family: var(--font-verse); color: var(--muted); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .vitem .lvl { align-self: center; }
 .quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
-.quick button { padding: 12px; }
+.quick button { padding: 12px; flex-direction: column; gap: 4px; }
+.quick button > svg.ic { width: 22px; height: 22px; color: var(--accent); }
 
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .panel h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+h2 > svg.ic { vertical-align: -.17em; margin-right: .4em; color: var(--accent); }
 .panel > .hint { margin: 0; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 label, .lab { font-size: .78rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
@@ -97,6 +104,10 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 button.primary:hover { filter: brightness(1.08); }
 button.link { border: 0; background: none; padding: 2px 4px; color: var(--muted); font-size: .85rem; }
 button.link:hover { color: var(--accent); }
+svg.ic { width: 1.15em; height: 1.15em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+button:has(> svg.ic) { display: inline-flex; align-items: center; justify-content: center; gap: .45em; }
+button.link:has(> svg.ic) { gap: .3em; }
+button.link > svg.ic { width: 1.05em; height: 1.05em; }
 button.link.danger:hover, button.link.armed { color: var(--danger); }
 
 .taginput { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
@@ -180,7 +191,8 @@ button.star.on, .chip .star.on { color: var(--warn); }
 .check { display: inline-flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: .92rem; color: var(--ink); cursor: pointer; }
 .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 button.mode { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; }
-.mode strong { font-weight: 600; }
+.mode strong { font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+.mode strong svg.ic { color: var(--accent); }
 .mode span { font-size: .8rem; color: var(--muted); }
 button.mode.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 button.primary:disabled { opacity: .5; cursor: default; filter: none; }
@@ -209,6 +221,7 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
 .rate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 @media (max-width: 520px) { .rate { grid-template-columns: repeat(2, 1fr); } }
 .rate button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 10px 6px; font-weight: 600; }
+.rate button svg.ic { width: 20px; height: 20px; margin-bottom: 2px; }
 .rate button span { font-size: .75rem; font-weight: 400; color: var(--muted); }
 .rate .r0 { color: var(--danger); } .rate .r0:hover { border-color: var(--danger); }
 .rate .r1 { color: var(--warn); } .rate .r1:hover { border-color: var(--warn); }
@@ -252,7 +265,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
 
 <div id="hlPop" class="hlpop" hidden role="toolbar" aria-label="Highlight">
   <button id="hlAdd" type="button"><span class="swatch"></span>Highlight</button>
-  <button id="hlRemove" type="button">Remove highlight</button>
+  <button id="hlRemove" type="button" data-icon="x">Remove highlight</button>
 </div>
 
 <div class="wrap">
@@ -266,11 +279,11 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
       <nav id="menu" class="menu" hidden aria-label="Main">
-        <button type="button" data-view="home">Home</button>
-        <button type="button" data-view="learn">Learn</button>
-        <button type="button" data-view="board">All verses</button>
-        <button type="button" data-view="add">Add a verse</button>
-        <button type="button" data-view="settings">Settings &amp; backup</button>
+        <button type="button" data-view="home" data-icon="home">Home</button>
+        <button type="button" data-view="learn" data-icon="cards">Learn</button>
+        <button type="button" data-view="board" data-icon="book">All verses</button>
+        <button type="button" data-view="add" data-icon="plus">Add a verse</button>
+        <button type="button" data-view="settings" data-icon="gear">Settings &amp; backup</button>
       </nav>
     </div>
   </header>
@@ -279,7 +292,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   <section id="gate" class="panel gate" hidden>
     <h2>Sign in to your shared verses</h2>
     <p id="gateMsg">Loading…</p>
-    <button id="btnSignIn" type="button" class="primary" hidden>Sign in with Google</button>
+    <button id="btnSignIn" type="button" class="primary" data-icon="login" hidden>Sign in with Google</button>
     <div id="gateErr" class="err"></div>
   </section>
 
@@ -288,7 +301,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   <section id="boardView" class="page boardcol" hidden>
     <div class="pagehead">
       <h2>All verses</h2>
-      <button type="button" class="primary" data-view="add">Add a verse</button>
+      <button type="button" class="primary" data-view="add" data-icon="plus">Add a verse</button>
     </div>
     <div class="boardbar">
       <input id="search" type="search" placeholder="Search passage or text">
@@ -304,7 +317,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       <h2 id="formTitle">Add a verse</h2>
       <div id="versions" class="versions"></div>
       <datalist id="translationList"></datalist>
-      <button id="btnAddVersion" type="button" class="addver">+ Add another translation</button>
+      <button id="btnAddVersion" type="button" class="addver" data-icon="plus">Add another translation</button>
       <div class="field">
         <label for="tagInput">Tags <span class="opt">(optional, several allowed)</span></label>
         <div class="taginput" id="tagBox">
@@ -315,8 +328,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       </div>
       <div id="formErr" class="err"></div>
       <div class="row formbtns">
-        <button id="btnSubmit" type="submit" class="primary">Add verse</button>
-        <button id="btnCancelEdit" type="button" hidden>Cancel</button>
+        <button id="btnSubmit" type="submit" class="primary" data-icon="check">Add verse</button>
+        <button id="btnCancelEdit" type="button" data-icon="x" hidden>Cancel</button>
       </div>
       <p id="formMsg" class="toast" aria-live="polite"></p>
     </form>
@@ -326,31 +339,31 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
 
   <section id="settings" class="page narrow" hidden>
     <section class="panel">
-      <h2>Account</h2>
+      <h2 data-icon="user">Account</h2>
       <p id="accountText" class="hint">Your verses and learning progress are stored in this browser only.</p>
-      <div class="row"><button id="btnSignOut" type="button" hidden>Sign out</button></div>
+      <div class="row"><button id="btnSignOut" type="button" data-icon="logout" hidden>Sign out</button></div>
     </section>
 
     <section class="panel">
-      <h2>Back up (export)</h2>
+      <h2 data-icon="download">Back up (export)</h2>
       <p class="hint">Downloads all verses as a JSON file. You can also copy the JSON and save it as a <code>.json</code> file.</p>
-      <div class="row"><button id="btnExport" type="button" class="primary">Export JSON</button></div>
+      <div class="row"><button id="btnExport" type="button" class="primary" data-icon="download">Export JSON</button></div>
       <div id="exportSheet" class="field" hidden>
         <textarea id="exportText" readonly></textarea>
         <div class="row">
-          <button id="btnCopy" type="button">Copy JSON</button>
+          <button id="btnCopy" type="button" data-icon="copy">Copy JSON</button>
           <span id="copyMsg" class="toast"></span>
         </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Import</h2>
+      <h2 data-icon="upload">Import</h2>
       <p class="hint">Pick a file exported from Verse Board, or paste its JSON. Verses you already have are kept; duplicates are skipped.</p>
       <input id="importFile" type="file" accept=".json,application/json">
       <textarea id="importText" placeholder='{"verses": [ ... ]}'></textarea>
       <div class="row">
-        <button id="btnDoImport" type="button" class="primary">Import</button>
+        <button id="btnDoImport" type="button" class="primary" data-icon="upload">Import</button>
         <span id="importMsg" class="toast"></span>
       </div>
       <div id="importErr" class="err"></div>
@@ -374,9 +387,52 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.8 (17 Oct 2026)';
+  const APP_VERSION = '1.9 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
+
+  // Line icons (24×24, drawn with the current text colour). icon(name) returns an <svg class="ic">.
+  const ICONS = {
+    home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v12h14V9"/><path d="M10 21v-6h4v6"/>',
+    cards: '<rect x="3" y="7" width="13" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/>',
+    book: '<path d="M2 5h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
+    login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+    download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+    upload: '<path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+    edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+    trash: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="m6 7 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M9 7V4h6v3"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    check: '<path d="m4 12.5 5 5L20 6.5"/>',
+    play: '<path d="M7 4v16l13-8z"/>',
+    sliders: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+    flame: '<path d="M12 22c4 0 7-2.7 7-7 0-4-3-6.5-4-10-2 1.5-3 3.5-3 5.5-1-1-1.5-2-1.5-3C7 9.5 5 12.3 5 15c0 4.3 3 7 7 7z"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    turn: '<path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/>',
+    again: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17.5h.01"/>',
+    letters: '<path d="M3 18 7.5 6 12 18"/><path d="M4.7 14h5.6"/><circle cx="17.5" cy="15" r="2.5"/><path d="M20 12v6"/>',
+    fade: '<path d="m3 3 18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 9 5 9.5 7a13 13 0 0 1-2.4 3.4"/><path d="M6.6 6.6C4.4 8 3 10.3 2.5 12c.5 2 4.5 7 9.5 7a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+    link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
+    wave: '<path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/>',
+    sparkle: '<path d="M12 3c.8 5.5 3.5 8.2 9 9-5.5.8-8.2 3.5-9 9-.8-5.5-3.5-8.2-9-9 5.5-.8 8.2-3.5 9-9z"/>',
+    bookmark: '<path d="M6 3h12v18l-6-4-6 4z"/>',
+    layers: '<path d="M12 3 2 8l10 5 10-5z"/><path d="m2 13 10 5 10-5"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    next: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>'
+  };
+  function icon(name) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'ic');
+    svg.innerHTML = ICONS[name];
+    return svg;
+  }
+  // Changes a button's text but keeps its icon.
+  function setLabel(btn, text) { btn.replaceChildren(...btn.querySelectorAll(':scope > .ic'), text); }
+  document.querySelectorAll('[data-icon]').forEach(b => b.prepend(icon(b.dataset.icon)));
 
   const KEY = 'verseBoard.v1';
   const $ = (id) => document.getElementById(id);
@@ -531,7 +587,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         el('span', { class: 'vtitle' }),
         el('span', { class: 'vend' },
           el('span', { class: 'vstar' }),
-          first ? null : el('button', { type: 'button', class: 'link danger', onclick: () => { block.remove(); numberBlocks(); } }, 'Remove'))
+          first ? null : el('button', { type: 'button', class: 'link danger', onclick: () => { block.remove(); numberBlocks(); } }, icon('trash'), 'Remove'))
       ),
       el('div', { class: 'field' },
         el('label', { for: 'passage-' + n }, 'Passage'),
@@ -600,7 +656,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     draftTags = [...(v.tags || [])];
     $('formErr').textContent = '';
     $('formTitle').textContent = 'Edit verse';
-    $('btnSubmit').textContent = 'Save changes';
+    setLabel($('btnSubmit'), 'Save changes');
     $('btnCancelEdit').hidden = false;
     $('form').classList.add('editing');
     $('formMsg').textContent = '';
@@ -613,7 +669,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     draftTags = [];
     $('formErr').textContent = '';
     $('formTitle').textContent = 'Add a verse';
-    $('btnSubmit').textContent = 'Add verse';
+    setLabel($('btnSubmit'), 'Add verse');
     $('btnCancelEdit').hidden = true;
     $('form').classList.remove('editing');
     resetVersionBlocks();
@@ -770,11 +826,11 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
           el('div', { class: 'tags' }, (v.tags || []).map(t => el('button', { type: 'button', class: 'chip', title: 'Show only ' + t, onclick: () => { activeTag = t; renderBoard(); renderFilters(); } }, t))),
           el('div', { class: 'actions' },
             levelDots(v.id),
-            el('button', { type: 'button', class: 'link', onclick: () => startEdit(v) }, 'Edit'),
+            el('button', { type: 'button', class: 'link', onclick: () => startEdit(v) }, icon('edit'), 'Edit'),
             el('button', { type: 'button', class: 'link danger' + (armed ? ' armed' : ''), onclick: () => {
               if (armed) { if (editingId === v.id) stopEdit(); verses = verses.filter(x => x.id !== v.id); pendingDelete = null; save(); renderAll(); }
               else { pendingDelete = v.id; renderBoard(); setTimeout(() => { if (pendingDelete === v.id) { pendingDelete = null; renderBoard(); } }, 4000); }
-            } }, armed ? 'Click again to delete' : 'Delete')
+            } }, icon('trash'), armed ? 'Click again to delete' : 'Delete')
           )
         )
       );
@@ -959,17 +1015,17 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
 
   // ---------- learning sessions ----------
   const MODES = [
-    { id: 'flip', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' },
-    { id: 'reverse', name: 'Which verse?', desc: 'Read the text, name the reference, then turn the card.' },
-    { id: 'letters', name: 'First letters', desc: 'Only the first letter of each word is shown as a hint.' },
-    { id: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
-    { id: 'match', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' }
+    { id: 'flip', icon: 'turn', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' },
+    { id: 'reverse', icon: 'help', name: 'Which verse?', desc: 'Read the text, name the reference, then turn the card.' },
+    { id: 'letters', icon: 'letters', name: 'First letters', desc: 'Only the first letter of each word is shown as a hint.' },
+    { id: 'fade', icon: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
+    { id: 'match', icon: 'link', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' }
   ];
   const RATINGS = [
-    { name: 'Not yet', desc: 'Show it again', points: 0 },
-    { name: 'Shaky', desc: 'Needed help', points: 5 },
-    { name: 'Got it', desc: 'Small slips', points: 10 },
-    { name: 'Perfect', desc: 'Word for word', points: 15 }
+    { name: 'Not yet', icon: 'again', desc: 'Show it again', points: 0 },
+    { name: 'Shaky', icon: 'wave', desc: 'Needed help', points: 5 },
+    { name: 'Got it', icon: 'check', desc: 'Small slips', points: 10 },
+    { name: 'Perfect', icon: 'sparkle', desc: 'Word for word', points: 15 }
   ];
   const FADE = [0.3, 0.45, 0.6, 0.75, 0.9, 1, 1]; // share of words "Fading words" hides, by box
   let view = 'home';
@@ -1022,7 +1078,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       el('button', { type: 'button', class: 'link danger' + (armed ? ' armed' : ''), onclick: () => {
         if (armed) { pendingSetDelete = null; storeSet(st, true); renderSetup(); }
         else { pendingSetDelete = st.id; renderSetup(); setTimeout(() => { if (pendingSetDelete === st.id) { pendingSetDelete = null; renderLearn(); } }, 4000); }
-      } }, armed ? 'Click again to delete' : 'Delete'));
+      } }, icon('trash'), armed ? 'Click again to delete' : 'Delete'));
   }
   function saveSelectionAsSet() {
     const name = norm(setName);
@@ -1071,6 +1127,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   $('btnHome').addEventListener('click', () => { if (appOn) setView('home'); });
 
   // ---------- home ----------
+  function flameIcon() { const i = icon('flame'); i.classList.add('flame'); return i; }
   function verseItem(v) {
     const t = verseTr(v);
     return el('div', { class: 'vitem' }, el('span', { class: 'ppass' }, t.passage), levelDots(v.id), el('span', { class: 'vt' }, t.text));
@@ -1092,26 +1149,26 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
           el('span', { class: 'count' }, [mode ? mode.name : '', when].filter(Boolean).join(' · '))),
         el('div', { class: 'vlist' }, lastVerses.map(verseItem)),
         el('div', { class: 'row' },
-          el('button', { type: 'button', class: 'primary', onclick: () => startWith(lastSet ? setVerseIds(lastSet) : lastVerses.map(v => v.id), mode ? mode.id : 'flip') }, 'Continue learning'),
-          el('button', { type: 'button', onclick: () => { picked = new Set(lastVerses.map(v => v.id)); setView('learn'); } }, 'Change verses or mode')));
+          el('button', { type: 'button', class: 'primary', onclick: () => startWith(lastSet ? setVerseIds(lastSet) : lastVerses.map(v => v.id), mode ? mode.id : 'flip') }, icon('play'), 'Continue learning'),
+          el('button', { type: 'button', onclick: () => { picked = new Set(lastVerses.map(v => v.id)); setView('learn'); } }, icon('sliders'), 'Change verses or mode')));
     } else if (verses.length) {
       const list = (due.length ? due : verses).slice(0, 5);
       card = el('section', { class: 'panel lastcard' },
         el('div', { class: 'learnhead' }, el('h2', null, due.length ? 'Ready to learn' : 'Start learning'), el('span', { class: 'count' }, due.length ? `${due.length} due` : '')),
         el('div', { class: 'vlist' }, list.map(verseItem)),
-        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'learn' }, 'Start a learning session')));
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'learn' }, icon('play'), 'Start a learning session')));
     } else {
-      card = el('section', { class: 'panel' }, el('h2', null, 'Welcome'),
+      card = el('section', { class: 'panel' }, el('h2', null, icon('book'), 'Welcome'),
         el('p', { class: 'hint' }, 'Add the first verse you want to memorise.'),
-        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'add' }, 'Add a verse')));
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'add' }, icon('plus'), 'Add a verse')));
     }
     $('home').replaceChildren(
       el('div', { class: 'today' },
-        el('div', { class: 'stat' }, el('b', null, String(due.length)), el('span', null, 'due today')),
-        el('div', { class: 'stat' }, el('b', null, String(streak)), el('span', null, streak === 1 ? 'day in a row' : 'days in a row')),
-        el('div', { class: 'stat' }, el('b', null, String(verses.length)), el('span', null, verses.length === 1 ? 'verse' : 'verses'))),
+        el('div', { class: 'stat' }, el('b', null, icon('clock'), String(due.length)), el('span', null, 'due today')),
+        el('div', { class: 'stat' }, el('b', null, flameIcon(), String(streak)), el('span', null, streak === 1 ? 'day in a row' : 'days in a row')),
+        el('div', { class: 'stat' }, el('b', null, icon('book'), String(verses.length)), el('span', null, verses.length === 1 ? 'verse' : 'verses'))),
       card,
-      sets.length ? el('section', { class: 'panel' }, el('h2', null, 'Learning sets'),
+      sets.length ? el('section', { class: 'panel' }, el('h2', null, icon('layers'), 'Learning sets'),
         el('div', { class: 'sets' }, sets.map(st => {
           const ids = setVerseIds(st), learned = ids.filter(id => boxOf(id) >= 3).length;
           return el('div', { class: 'setrow' },
@@ -1120,9 +1177,9 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
             el('div', { class: 'bar' }, el('div', { style: `width:${ids.length ? Math.round(100 * learned / ids.length) : 0}%` })));
         }))) : '',
       el('div', { class: 'quick' },
-        el('button', { type: 'button', 'data-view': 'learn' }, 'Learn'),
-        el('button', { type: 'button', 'data-view': 'board' }, 'All verses'),
-        el('button', { type: 'button', 'data-view': 'add' }, 'Add a verse'))
+        el('button', { type: 'button', 'data-view': 'learn' }, icon('cards'), 'Learn'),
+        el('button', { type: 'button', 'data-view': 'board' }, icon('book'), 'All verses'),
+        el('button', { type: 'button', 'data-view': 'add' }, icon('plus'), 'Add a verse'))
     );
   }
 
@@ -1168,13 +1225,13 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     const activeSet = n ? sets.find(sameAsPicked) : null;
     const typedSet = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase());
     const nameInput = el('input', { type: 'text', id: 'setName', placeholder: 'Name, e.g. Advent 2026', autocomplete: 'off', 'aria-label': 'Name of the learning set',
-      oninput: (e) => { setName = e.target.value; const t = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase()); $('btnSaveSet').textContent = t ? 'Update set' : 'Save as set'; $('setMsg').textContent = ''; },
+      oninput: (e) => { setName = e.target.value; const t = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase()); setLabel($('btnSaveSet'), t ? 'Update set' : 'Save as set'); $('setMsg').textContent = ''; },
       onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); saveSelectionAsSet(); } } });
     nameInput.value = setName;
     const typing = document.activeElement && document.activeElement.id === 'setName' ? document.activeElement.selectionStart : null;
     root.replaceChildren(el('section', { class: 'panel' },
       el('div', { class: 'learnhead' },
-        el('h2', null, 'Start a learning session'),
+        el('h2', null, icon('cards'), 'Start a learning session'),
         streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null),
       el('div', { class: 'field' },
         el('div', { class: 'lab' }, 'Learning sets'),
@@ -1185,7 +1242,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       el('div', { class: 'field' },
         el('div', { class: 'lab' }, 'Verses'),
         el('div', { class: 'filters' },
-          el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked(due) }, `Due now · ${due.length}`),
+          el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked(due) }, icon('clock'), `Due now · ${due.length}`),
           tagCounts().map(([t, c]) => {
             const tagged = verses.filter(v => v.tags.includes(t));
             const all = tagged.every(v => picked.has(v.id));
@@ -1202,20 +1259,20 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
           return el('label', { class: 'pick' }, cb, el('span', { class: 'ppass' }, t.passage), el('span', { class: 'ptext' }, t.text), el('span', { class: 'due' }, dueLabel(v.id)), levelDots(v.id));
         })),
         el('div', { class: 'row savesets' }, nameInput,
-          el('button', { type: 'button', id: 'btnSaveSet', onclick: saveSelectionAsSet }, typedSet ? 'Update set' : 'Save as set'),
+          el('button', { type: 'button', id: 'btnSaveSet', onclick: saveSelectionAsSet }, icon('bookmark'), typedSet ? 'Update set' : 'Save as set'),
           el('span', { id: 'setMsg', class: 'hint', 'aria-live': 'polite' }))
       ),
       el('div', { class: 'field' },
         el('div', { class: 'lab' }, 'Way of learning'),
         el('div', { class: 'modes', role: 'radiogroup', 'aria-label': 'Way of learning' }, MODES.map(m =>
           el('button', { type: 'button', class: 'mode' + (learnMode === m.id ? ' on' : ''), role: 'radio', 'aria-checked': String(learnMode === m.id), onclick: () => { learnMode = m.id; renderSetup(); } },
-            el('strong', null, m.name), el('span', null, m.desc))))
+            el('strong', null, icon(m.icon), m.name), el('span', null, m.desc))))
       ),
       el('div', { class: 'row' },
         el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
         el('label', { class: 'check' }, shuffleBox, 'Shuffle the order')
       ),
-      el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked], true) },
+      el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked], true) }, icon('play'),
         n < minPick ? (minPick === 2 ? 'Pick at least two verses to match' : 'Pick at least one verse') : `Start with ${n} verse${n === 1 ? '' : 's'}`)
     ));
     if (n < minPick) $('btnStart').disabled = true;
@@ -1302,11 +1359,11 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   }
   function learnControls() {
     if (!session.revealed) return el('div', { class: 'learnctl' },
-      el('button', { type: 'button', class: 'primary', onclick: turn }, 'Turn around'));
+      el('button', { type: 'button', class: 'primary', onclick: turn }, icon('turn'), 'Turn around'));
     return el('div', { class: 'learnctl' },
       el('div', { class: 'lab' }, 'How well did you know it?'),
       el('div', { class: 'rate' }, RATINGS.map((r, i) =>
-        el('button', { type: 'button', class: 'r' + i, onclick: () => rate(i) }, r.name, el('span', null, r.desc)))));
+        el('button', { type: 'button', class: 'r' + i, onclick: () => rate(i) }, icon(r.icon), r.name, el('span', null, r.desc)))));
   }
   function renderSession() {
     if (session.mode === 'match' && !session.finished) return renderMatch();
@@ -1323,7 +1380,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         el('span', null, 'Card ', el('b', null, String(s.idx + 1)), ` of ${s.queue.length}`),
         el('span', null, el('b', null, String(s.points)), ' points', s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
         el('span', null, s.streak >= 2 ? `${s.streak} in a row` : ''),
-        el('button', { type: 'button', class: 'link', onclick: endSession }, 'End session')),
+        el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), 'End session')),
       el('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(s.queue.length), 'aria-valuenow': String(s.idx) },
         el('div', { style: `width:${Math.round(100 * s.idx / s.queue.length)}%` })),
       card,
@@ -1422,7 +1479,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         el('span', null, 'Round ', el('b', null, String(s.round + 1)), ` of ${s.rounds.length}`),
         el('span', null, el('b', null, String(s.points)), ' points', s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
         el('span', null, s.streak >= 2 ? `${s.streak} in a row` : ''),
-        el('button', { type: 'button', class: 'link', onclick: endSession }, 'End session')),
+        el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), 'End session')),
       el('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(total), 'aria-valuenow': String(doneBefore + s.doneText.size) },
         el('div', { style: `width:${Math.round(100 * (doneBefore + s.doneText.size) / total)}%` })),
       el('p', { class: 'hint' }, 'Tap a verse, then the passage it belongs to.'),
@@ -1432,7 +1489,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       roundDone ? el('div', { class: 'learnctl' }, el('button', { type: 'button', class: 'primary', onclick: () => {
         if (last) { s.finished = true; renderSession(); }
         else { s.round++; startRound(); renderMatch(); window.scrollTo({ top: 0 }); }
-      } }, last ? 'See results' : 'Next round')) : ''
+      } }, icon(last ? 'check' : 'next'), last ? 'See results' : 'Next round')) : ''
     );
   }
 
@@ -1452,7 +1509,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     const again = [...s.first].filter(([, r]) => r <= 1).map(([id]) => id);
     const streak = dayStreak();
     $('learn').replaceChildren(el('section', { class: 'panel' },
-      el('div', { class: 'learnhead' }, el('h2', null, 'Session complete'), streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null),
+      el('div', { class: 'learnhead' }, el('h2', null, icon('sparkle'), 'Session complete'), streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null),
       el('div', null, el('div', { class: 'score' }, String(s.points)), el('div', { class: 'hint' }, `points · best run ${s.best} in a row`)),
       el('div', { class: 'stats' }, RATINGS.map((r, i) => el('div', { class: 'stat' }, el('b', null, String(counts[i])), el('span', null, r.name)))),
       el('div', { class: 'results' }, [...s.first].map(([id, r]) => {
@@ -1460,10 +1517,10 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         return v ? el('div', null, el('span', { class: 'ppass' }, verseTr(v).passage), el('span', { class: 'due' }, RATINGS[r].name), levelDots(id)) : null;
       })),
       el('div', { class: 'row' },
-        again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, `Practise the ${again.length} tricky one${again.length === 1 ? '' : 's'} again`) : null,
-        el('button', { type: 'button', onclick: () => startSession([...s.first.keys()]) }, 'Same verses again'),
-        el('button', { type: 'button', onclick: () => { session = null; picked = null; renderSetup(); } }, 'New session'),
-        el('button', { type: 'button', onclick: () => { session = null; setView('home'); } }, 'Done'))
+        again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, icon('again'), `Practise the ${again.length} tricky one${again.length === 1 ? '' : 's'} again`) : null,
+        el('button', { type: 'button', onclick: () => startSession([...s.first.keys()]) }, icon('turn'), 'Same verses again'),
+        el('button', { type: 'button', onclick: () => { session = null; picked = null; renderSetup(); } }, icon('sliders'), 'New session'),
+        el('button', { type: 'button', onclick: () => { session = null; setView('home'); } }, icon('check'), 'Done'))
     ));
   }
   document.addEventListener('keydown', (e) => {
