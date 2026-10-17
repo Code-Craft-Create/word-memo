@@ -674,7 +674,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.22 (17 Oct 2026)';
+  const APP_VERSION = '1.23 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -1666,15 +1666,16 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
 
   // ---------- learning sessions ----------
+  // Sorted by the highest level each way can reach (cap), so they read as a path from new to mastered.
   const MODES = [
-    { id: 'flip', cap: 6, icon: 'turn', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' },
     { id: 'reverse', cap: 2, icon: 'help', name: 'Which verse?', desc: 'Read the text, name the reference, then turn the card.' },
+    { id: 'match', cap: 2, icon: 'link', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' },
+    { id: 'lightning', cap: 2, icon: 'bolt', name: 'Lightning round', desc: 'One minute of quick questions. Try to beat your best.' },
     { id: 'letters', cap: 3, icon: 'letters', name: 'First letters', desc: 'Only the first letter of each word is shown as a hint.' },
     { id: 'fade', cap: 4, icon: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
-    { id: 'match', cap: 2, icon: 'link', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' },
     { id: 'order', cap: 4, icon: 'arrange', name: 'Word order', desc: 'Tap the pieces of the verse in order. They get smaller as you improve.' },
-    { id: 'build', cap: 6, icon: 'build', name: 'Build it up', desc: 'For new verses: learn one phrase at a time, then say it all.' },
-    { id: 'lightning', cap: 2, icon: 'bolt', name: 'Lightning round', desc: 'One minute of quick questions. Try to beat your best.' }
+    { id: 'build', cap: 6, icon: 'build', name: 'Build it up', desc: 'Start from memory, learn one phrase at a time, then say it all.' },
+    { id: 'flip', cap: 6, icon: 'turn', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' }
   ];
   const RATINGS = [
     { name: 'Not yet', icon: 'again', desc: 'Show it again', points: 0 },
@@ -1990,7 +1991,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     session.hidden = null;
     session.trIdx = null;
     session.result = null;
-    session.step = 0;
+    session.step = session.mode === 'build' ? -1 : 0; // "Build it up" starts with no text at all
     setupCard();
   }
   // Prepares the current card for its mode: the words "Fading words" hides, or the phrases the other games use.
@@ -2158,10 +2159,12 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (s.mode === 'build') {
       const n = s.parts.length;
       if (s.revealed) return [el('div', { class: 'kicker' }, ref), full()];
+      if (s.step < 0) return [el('div', { class: 'kicker' }, 'From memory'), el('div', { class: 'big' }, passageOf(t)), t.translation ? el('div', { class: 'kicker' }, t.translation) : null,
+        el('div', { class: 'tap' }, 'How does it begin? Say as much as you can before you see any words')];
       if (s.step >= n) return [el('div', { class: 'kicker' }, 'Now say the whole verse'), el('div', { class: 'big' }, passageOf(t)), t.translation ? el('div', { class: 'kicker' }, t.translation) : null];
       return [el('div', { class: 'kicker' }, `${ref} · Phrase ${s.step + 1} of ${n}`),
         el('div', { class: 'vtxt' }, s.step ? el('span', { class: 'cue' }, firstLetters(s.parts.slice(0, s.step).join(' ')) + ' ') : null, el('span', { class: 'now' }, s.parts[s.step])),
-        el('div', { class: 'tap' }, s.step ? 'Say it from the start, with the new phrase' : 'Read the phrase aloud a few times')];
+        el('div', { class: 'tap' }, s.step ? 'Say it from the start, with the new phrase' : 'Check yourself, then read the phrase aloud a few times')];
     }
     if (s.result != null) return [el('div', { class: 'kicker' }, ref), full()];
     const sofar = s.parts.slice(0, s.placed).join(' ');
@@ -2173,7 +2176,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       if (s.revealed) return learnControls();
       const n = s.parts.length;
       return el('div', { class: 'learnctl' }, el('button', { type: 'button', class: 'primary', onclick: buildStep },
-        s.step < n - 1 ? [icon('next'), 'Next phrase'] : s.step === n - 1 ? [icon('play'), 'Say the whole verse'] : [icon('turn'), 'Show the verse']));
+        s.step < 0 ? [icon('turn'), 'Show the first phrase'] : s.step < n - 1 ? [icon('next'), 'Next phrase'] : s.step === n - 1 ? [icon('play'), 'Say the whole verse'] : [icon('turn'), 'Show the verse']));
     }
     if (s.result != null) {
       const last = s.idx === s.queue.length - 1 && s.result !== 0;
@@ -2615,11 +2618,13 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
           cap.replaceChildren(...(wrong != null ? ['Wrong piece: one slip'] : placed === 4 ? ['Done with one slip: ', el('b', null, 'Shaky'), ' +5'] : ['']));
         } };
       } },
-    { mode: 'build', text: [el('p', null, 'Made for new verses. You learn one phrase at a time and say everything so far, with first letters as a hint for the earlier phrases. At the end you say the whole verse and rate yourself.')],
+    { mode: 'build', text: [el('p', null, 'You start with no text at all and say as much as you can from memory. Then the verse comes back one phrase at a time: you say everything so far, with first letters as a hint for the earlier phrases. At the end you say the whole verse and rate yourself.')],
       demo: () => {
         const face = el('div', { class: 'face stage' }), under = el('div', { class: 'floatwrap', style: 'width:100%' });
         const n = DEMO.parts.length;
-        return { node: [face, under], frames: n + 3, ms: 1300, show: (f) => {
+        return { node: [face, under], frames: n + 4, ms: 1300, show: (f) => {
+          if (f === 0) { face.replaceChildren(el('div', { class: 'kicker' }, 'From memory'), el('div', { class: 'big' }, DEMO.ref)); under.replaceChildren(''); return; }
+          f--;
           if (f < n) face.replaceChildren(el('div', { class: 'kicker' }, `Phrase ${f + 1} of ${n}`),
             el('div', { class: 'vtxt' }, f ? el('span', { class: 'cue' }, firstLetters(DEMO.parts.slice(0, f).join(' ')) + ' ') : null, el('span', { class: 'now newbit' }, DEMO.parts[f])));
           else if (f === n) face.replaceChildren(el('div', { class: 'kicker' }, 'Now say the whole verse'), el('div', { class: 'big' }, DEMO.ref));
@@ -2646,6 +2651,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         } };
       } }
   ];
+  // The mode slides follow the order of MODES, so "How this way works" can open at the selected mode.
+  TUTORIAL.sort((a, b) => (a.mode ? MODES.findIndex(m => m.id === a.mode) : -1) - (b.mode ? MODES.findIndex(m => m.id === b.mode) : -1));
   let tutIdx = 0, tutTimer = null;
   function openTutorial(at) {
     try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch (e) {}
