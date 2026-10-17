@@ -71,7 +71,7 @@ button.iconbtn { padding: 8px; line-height: 0; }
 .vlist { display: flex; flex-direction: column; }
 .vitem { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line); min-width: 0; }
 .vitem .ppass { font-family: var(--font-verse); font-weight: 600; }
-.vitem .vt { grid-column: 1 / -1; font-family: var(--font-verse); color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.vitem .vt { grid-column: 1 / -1; font-family: var(--font-verse); color: var(--muted); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .vitem .lvl { align-self: center; }
 .quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
 .quick button { padding: 12px; }
@@ -88,6 +88,7 @@ input[type=text], input[type=search], textarea {
 textarea { resize: vertical; min-height: 110px; font-family: var(--font-verse); font-size: 1rem; }
 input:focus-visible, textarea:focus-visible, button:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .hint { font-size: .8rem; color: var(--muted); }
+.appfoot { margin-top: 12px; text-align: center; font-size: .78rem; color: var(--muted); }
 .err { font-size: .82rem; color: var(--danger); min-height: 1.1em; }
 
 button { font: inherit; cursor: pointer; border-radius: 8px; padding: 8px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
@@ -355,6 +356,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       <div id="importErr" class="err"></div>
     </section>
   </section>
+
+  <footer class="appfoot">Verse Board · version <span id="appVersion"></span></footer>
 </div>
 
 <script>
@@ -370,6 +373,10 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     appId: '1:887532760525:web:fe305ad402d0615735e884'
   };
   const FIREBASE_VERSION = '10.14.1';
+  // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
+  const APP_VERSION = '1.8 (17 Oct 2026)';
+
+  document.getElementById('appVersion').textContent = APP_VERSION;
 
   const KEY = 'verseBoard.v1';
   const $ = (id) => document.getElementById(id);
