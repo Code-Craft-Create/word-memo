@@ -1144,8 +1144,12 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     $('versions').replaceChildren();
     addVersionBlock();
   }
+  // The verse as it was when Edit was opened, to notice when the other person changes it meanwhile.
+  let editingBase = null, saveAnyway = false;
+  const verseJson = (v) => { const n = normalizeVerse(v); return JSON.stringify({ translations: n.translations, tags: n.tags }); };
   function startEdit(v) {
     editingId = v.id;
+    editingBase = verseJson(v); saveAnyway = false;
     $('versions').replaceChildren();
     v.translations.forEach(t => addVersionBlock(t));
     draftTags = [...(v.tags || [])];
@@ -1239,6 +1243,13 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     }
     $('formErr').textContent = '';
     const existing = editingId && verses.find(v => v.id === editingId);
+    if (existing && !saveAnyway && verseJson(existing) !== editingBase) {
+      $('formErr').replaceChildren('This verse was changed by someone else while you were editing it. ',
+        el('button', { type: 'button', class: 'link', onclick: () => { saveAnyway = true; $('form').requestSubmit(); } }, 'Save mine anyway'), ' or ',
+        el('button', { type: 'button', class: 'link', onclick: () => startEdit(existing) }, 'load their version'), '.');
+      return;
+    }
+    saveAnyway = false;
     if (existing) {
       existing.translations = translations;
       existing.tags = [...draftTags];
@@ -1504,9 +1515,18 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
   let progress = loadProgress();
   let progressRef = null; // the signed-in person's progress document, once Firestore has sent it
-  function saveProgress() {
+  // In shared mode only the part that changed is written, so two devices of the same person don't overwrite each
+  // other's ratings: `{ verse: id }` (that verse's entry, or its removal), `{ day }`, `{ fields: ['last', 'best'] }`.
+  // Without a change the whole document is replaced, which only a reset or an import does on purpose.
+  function saveProgress(change) {
     if (!cloud) { try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress)); } catch (e) {} return; }
-    if (progressRef) fs.setDoc(progressRef, progress).catch(showProgressError);
+    if (!progressRef) return;
+    let write;
+    if (!change) write = fs.setDoc(progressRef, progress);
+    else if (change.verse) write = fs.setDoc(progressRef, { verses: { [change.verse]: progress.verses[change.verse] || fs.deleteField() } }, { merge: true });
+    else if (change.day) write = fs.setDoc(progressRef, { days: fs.arrayUnion(change.day) }, { merge: true });
+    else write = fs.setDoc(progressRef, Object.fromEntries(change.fields.map(f => [f, progress[f] == null ? fs.deleteField() : progress[f]])), { merge: true });
+    write.catch(showProgressError);
   }
   function showProgressError(err) {
     $('syncErr').textContent = err && err.code === 'permission-denied'
@@ -1894,7 +1914,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const st = sets.find(x => { const sid = setVerseIds(x); return sid.length === list.length && list.every(v => sid.includes(v.id)); });
     if (remember) {
       progress.last = { verseIds: list.map(v => v.id), mode: learnMode, at: new Date().toISOString(), ...(st ? { setId: st.id } : {}) };
-      saveProgress();
+      saveProgress({ fields: ['last'] });
     }
     if (learnShuffle) list = shuffle(list);
     // Matching needs two verses; a single verse (e.g. "practise the tricky one again") is shown as a flip card.
@@ -2072,7 +2092,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (!s.first.has(id)) {
       s.first.set(id, r);
       if (schedule(id, r, (MODES.find(m => m.id === s.mode) || {}).cap)) s.limited.add(id);
-      saveProgress();
+      saveProgress({ verse: id });
     }
   }
   function rate(r) {
@@ -2316,10 +2336,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (!s.closed) {
       s.closed = s.finished = true;
       const today = dayStr();
-      if (s.first.size && !progress.days.includes(today)) { progress.days.push(today); saveProgress(); }
+      if (s.first.size && !progress.days.includes(today)) { progress.days.push(today); saveProgress({ day: today }); }
       if (s.mode === 'lightning') {
         s.prevBest = (progress.best || {}).lightning || 0;
-        if (s.right > s.prevBest) { progress.best = { ...progress.best, lightning: s.right }; saveProgress(); }
+        if (s.right > s.prevBest) { progress.best = { ...progress.best, lightning: s.right }; saveProgress({ fields: ['best'] }); }
       }
     }
     const counts = [0, 0, 0, 0];
@@ -2769,7 +2789,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   // Resets one verse to New for the signed-in person.
   function resetVerse(id) {
     delete progress.verses[id];
-    saveProgress(); renderAll();
+    saveProgress({ verse: id }); renderAll();
   }
 
   // ---------- export ----------
