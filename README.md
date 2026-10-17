@@ -23,6 +23,7 @@ Open `index.html` in a browser.
 - Save a selection of verses as a named learning set to focus on over several days. Sets are shared, and each set shows how many of its verses you have learned and how many are due. Saving under an existing name updates that set.
 - Each rating moves the verse to a level (0 to 6, shown as dots) and schedules when it is due again, from the same day up to a month later. A verse can rise at most 2 levels a day, and the quick ways (Which verse?, Match up, Lightning round) only raise it up to level 2. Sessions give points, runs of known verses earn a bonus, and the app counts the days in a row you practised.
 
+- The app speaks English or German (Settings → Language). It starts in the browser's language and remembers the choice: on the device, and in shared mode in your own data, so it follows you to your other devices. All texts live in `index.html`: they are written in English in the code (`t('…')`), with the German ones in the `DE` list near the top of the script. Another language is one more such list plus an entry in `UI_LANGS`.
 - Share verses with other people: everyone signs in with Google and sees and edits the same verses, live. It also works offline and syncs later.
 - Groups: the admin (one Google account named in the Firestore rules) adds people and puts them in groups under Settings → People & groups. Each group has its own verses, learning sets and translations; someone in several groups switches between them in the menu. Removing someone's access keeps their learning progress in case they come back.
 
@@ -34,7 +35,7 @@ Once it is filled in, the data is stored in Cloud Firestore. Each group's verses
 
 Locally, the list of translations is kept under `verseBoard.translations.v1` and learning sets under `verseBoard.sets.v1`.
 
-Learning progress is personal. Locally it is kept in `localStorage` under `verseBoard.progress.v1`. In shared mode each person's progress is one document `progress/{uid}`, which only they can read or change. The group being shown is remembered per device under `verseBoard.group.v1`.
+Learning progress is personal. Locally it is kept in `localStorage` under `verseBoard.progress.v1`. In shared mode each person's progress is one document `progress/{uid}`, which only they can read or change. The group being shown is remembered per device under `verseBoard.group.v1`. The app language is kept per device under `verseBoard.lang.v1`, and in shared mode also as `lang` in the person's `progress/{uid}` document (no rules change needed).
 
 ## Set up sharing
 
