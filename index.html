@@ -702,7 +702,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.26 (17 Oct 2026)';
+  const APP_VERSION = '1.27 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -948,7 +948,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
   const cloud = !!FIREBASE_CONFIG.apiKey;
   let db = null, fs = null; // Firestore instance and module, once signed in
-  // Where the shared data lives: at the top of the database before the move into groups, else groups/{id}/….
+  // Where the shared data of the group being shown lives: groups/{id}/….
   let base = [];
   const gpath = (...p) => [...base, ...p];
   let synced = new Map(); // verse id -> JSON of the version last seen in Firestore
@@ -3004,17 +3004,14 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     let store;
     try { store = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
     catch (e) { store = fs.getFirestore(app); }
-    let unsubscribeProgress = null, unsubscribeMeta = null, unsubscribePerson = null, adminUnsubs = [], dataUnsubs = [];
-    let deniedEmail = null;
+    let unsubscribeProgress = null, unsubscribePerson = null, adminUnsubs = [], dataUnsubs = [];
     let user = null;
 
     // ----- groups -----
-    // Before the admin moves the old data into a group (`meta/migration` missing), everyone uses the top-level
-    // collections as before. Afterwards each person's document `people/{email}` says which groups they are in,
-    // and the app shows the verses, sets and translations of one group at a time.
+    // Each person's document `people/{email}` says which groups they are in, and the app shows the verses, sets
+    // and translations of one group at a time.
     const GROUP_KEY = 'verseBoard.group.v1';
-    let migrated = null; // null until known
-    let person = null; // this person's document, after the move
+    let person; // this person's document; undefined until it has loaded, null if they were not added
     let myGroups = []; // [{ id, name }]
     let groupId = null, dataKey = null, groupsToken = 0;
 
@@ -3027,21 +3024,29 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       session = null; picked = null;
       $('syncErr').hidden = true;
     }
+    // Without a group there is nothing to show. The admin still gets the app, to add themselves in Settings.
     function gate(msg) {
       stopData(); resetData();
+      if (isAdmin) {
+        showApp(true);
+        if (view !== 'settings') setView('settings');
+        $('syncErr').textContent = msg.replace(/ Ask the person.*/, '') + ' Add yourself to a group under People & groups below.';
+        $('syncErr').hidden = false;
+        renderAll();
+        return;
+      }
       showApp(false);
       $('gateMsg').textContent = msg;
       $('btnSignIn').hidden = true;
       $('btnGateSignOut').hidden = false;
       renderAll();
     }
-    // Listens to the verses, sets and translations under `path` (an array of path segments; [] = the old top level).
+    // Listens to the verses, sets and translations under `path` (an array of path segments).
     function useData(path) {
-      const key = path.join('/') || '/';
+      const key = path.join('/');
       if (key === dataKey) return;
       stopData(); resetData();
       dataKey = key; base = path;
-      const legacy = !path.length;
       if (!appOn) $('gateMsg').textContent = 'Loading verses…';
       renderAccount();
       dataUnsubs.push(fs.onSnapshot(fs.collection(store, ...gpath('verses')), snap => {
@@ -3053,10 +3058,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         if (editingId && !verses.some(v => v.id === editingId)) stopEdit();
         showApp(true);
         renderAll(); renderAdmin();
-      }, err => {
-        if (legacy && err.code === 'permission-denied') { deniedEmail = user && user.email; authMod.signOut(auth); return; }
-        showSyncError(err);
-      }));
+      }, showSyncError));
       dataUnsubs.push(fs.onSnapshot(fs.collection(store, ...gpath('sets')), snap => {
         sets = sortSets(snap.docs.map(d => normalizeSet({ ...d.data(), id: d.id })).filter(Boolean));
         if (!session) renderLearn();
@@ -3068,14 +3070,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         renderAll(); refreshBlocks();
       }, showTranslationsError));
     }
-    function route() {
-      if (migrated == null || !user) return;
-      if (!migrated) {
-        if (unsubscribePerson) { unsubscribePerson(); unsubscribePerson = null; }
-        useData([]);
-        return;
-      }
-      if (unsubscribePerson) return;
+    function watchPerson() {
       let touched = false;
       unsubscribePerson = fs.onSnapshot(fs.doc(store, 'people', accountEmail), snap => {
         person = snap.exists() ? snap.data() : null;
@@ -3124,7 +3119,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     });
     function renderAccount() {
       if (!user) return;
-      const g = migrated && myGroups.find(x => x.id === groupId);
+      const g = myGroups.find(x => x.id === groupId);
       $('accountText').textContent = g
         ? `Signed in as ${user.email}. You are in the group "${g.name}": its verses and learning sets are shared within the group; your learning progress is your own.`
         : `Signed in as ${user.email || user.displayName || 'you'}. Verses and learning sets are shared; your learning progress is your own.`;
@@ -3134,9 +3129,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     // Only the admin account named in the Firestore rules may read the `people` collection, so the panel shows
     // exactly when that read succeeds.
     let isAdmin = false, people = [], allGroups = [];
-    const moveDraft = { group: 'Family', name: '', email: '', otherName: '' };
     const draft = { email: '', name: '', groupIds: [] };
-    let newGroupName = '', moving = false;
+    let newGroupName = '';
     const appLink = () => location.origin + location.pathname;
     function adminDone(msg) { $('adminErr').textContent = ''; $('adminMsg').textContent = msg || ''; }
     function adminFail(err) { $('adminMsg').textContent = ''; $('adminErr').textContent = 'Could not save: ' + (err && err.message || err); }
@@ -3151,8 +3145,6 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       $('adminPanel').hidden = !isAdmin;
       if (!isAdmin) return;
       const box = $('admin');
-      if (migrated == null) { box.replaceChildren(el('p', { class: 'hint' }, 'Loading…')); return; }
-      if (!migrated) { box.replaceChildren(...moveSection()); return; }
       const sorted = [...people].sort((a, b) => (b.active === true) - (a.active === true) || (a.name || a.id).localeCompare(b.name || b.id));
       box.replaceChildren(
         el('p', { class: 'hint' }, 'Only you see this panel. People you add sign in with that Google address at ', el('a', { href: appLink() }, appLink()),
@@ -3230,52 +3222,14 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         renderAdmin();
       }, adminFail);
     }
-    function moveSection() {
-      return [
-        el('p', { class: 'hint' }, 'Before you can add more people, move the verses, learning sets and translations you share today into a first group. They are copied, and everyone\'s learning progress stays as it is. Export a backup below first, just in case.'),
-        textField('Name of the first group', moveDraft.group, v => { moveDraft.group = v; }),
-        textField('Your name', moveDraft.name, v => { moveDraft.name = v; }),
-        el('div', { class: 'addperson' },
-          textField('Google address of the other person (optional)', moveDraft.email, v => { moveDraft.email = v; }, { type: 'email' }),
-          textField('Their name', moveDraft.otherName, v => { moveDraft.otherName = v; })),
-        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', ...(db && !moving ? {} : { disabled: '' }), onclick: migrate }, icon('users'), moving ? 'Moving…' : 'Move existing data'))
-      ];
-    }
-    async function migrate() {
-      const group = norm(moveDraft.group), name = norm(moveDraft.name), email = norm(moveDraft.email).toLowerCase(), otherName = norm(moveDraft.otherName);
-      if (!group || !name) { $('adminErr').textContent = 'Type a group name and your name.'; return; }
-      if (email && (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !otherName)) { $('adminErr').textContent = 'Check the other person\'s Google address and type their name.'; return; }
-      if (!db || moving) return;
-      moving = true; adminDone(''); renderAdmin();
-      try {
-        const gid = uid(), now = new Date().toISOString();
-        const writes = [[['groups', gid], { name: group, createdAt: now }],
-          [['people', accountEmail], { name, groupIds: [gid], active: true, addedAt: now }],
-          ...(email && email !== accountEmail ? [[['people', email], { name: otherName, groupIds: [gid], active: true, addedAt: now }]] : []),
-          ...verses.map(({ id, ...data }) => [['groups', gid, 'verses', id], data]),
-          ...sets.map(({ id, ...data }) => [['groups', gid, 'sets', id], data]),
-          [['groups', gid, 'config', 'translations'], { items: translationList, updatedAt: now }]];
-        for (let i = 0; i < writes.length; i += 400) {
-          const batch = fs.writeBatch(store);
-          writes.slice(i, i + 400).forEach(([path, data]) => batch.set(fs.doc(store, ...path), data));
-          await batch.commit();
-        }
-        const [vs, ss] = await Promise.all(['verses', 'sets'].map(c => fs.getDocsFromServer(fs.collection(store, 'groups', gid, c))));
-        if (vs.size !== verses.length || ss.size !== sets.length) throw new Error(`the copy has ${vs.size} of ${verses.length} verses and ${ss.size} of ${sets.length} sets. Nothing was switched over; try again.`);
-        await fs.setDoc(fs.doc(store, 'meta', 'migration'), { at: now, groupId: gid, by: accountEmail, verses: vs.size, sets: ss.size });
-        try { localStorage.setItem(GROUP_KEY, gid); } catch (e) {}
-        adminDone(`Moved ${vs.size} verse${vs.size === 1 ? '' : 's'} and ${ss.size} learning set${ss.size === 1 ? '' : 's'} into the group ${group}.`);
-      } catch (err) {
-        $('adminErr').textContent = 'The move did not finish: ' + (err && err.message || err);
-      }
-      moving = false; renderAdmin();
-    }
     function watchAdmin() {
       const stop = () => { isAdmin = false; people = []; allGroups = []; adminUnsubs.forEach(u => u()); adminUnsubs = []; renderAdmin(); };
       adminUnsubs.push(fs.onSnapshot(fs.collection(store, 'people'), snap => {
+        const was = isAdmin;
         isAdmin = true;
         people = snap.docs.map(d => ({ ...d.data(), id: d.id }));
         renderAdmin();
+        if (!was && !appOn && person !== undefined) loadMyGroups();
       }, stop));
       adminUnsubs.push(fs.onSnapshot(fs.collection(store, 'groups'), snap => {
         allGroups = snap.docs.map(d => ({ id: d.id, name: d.data().name || 'Group' })).sort((a, b) => a.name.localeCompare(b.name));
@@ -3298,9 +3252,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     authMod.onAuthStateChanged(auth, u => {
       user = u;
       stopData();
-      [unsubscribeProgress, unsubscribeMeta, unsubscribePerson, ...adminUnsubs].forEach(f => f && f());
-      unsubscribeProgress = unsubscribeMeta = unsubscribePerson = null; adminUnsubs = [];
-      isAdmin = false; people = []; allGroups = []; migrated = null; person = null; myGroups = []; groupId = null; base = [];
+      [unsubscribeProgress, unsubscribePerson, ...adminUnsubs].forEach(f => f && f());
+      unsubscribeProgress = unsubscribePerson = null; adminUnsubs = [];
+      isAdmin = false; people = []; allGroups = []; person = undefined; myGroups = []; groupId = null; base = [];
       resetData(); renderGroupPick(); renderAdmin();
       progressRef = null; progress = normalizeProgress(null); view = 'home';
       $('btnGateSignOut').hidden = true;
@@ -3308,10 +3262,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         accountEmail = '';
         showApp(false);
         $('btnSignOut').hidden = true;
-        $('gateMsg').textContent = deniedEmail
-          ? `${deniedEmail} does not have access to these verses. Sign in with an account that was added in the Firestore rules.`
-          : 'Sign in with your Google account to see and edit the verses you share.';
-        deniedEmail = null;
+        $('gateMsg').textContent = 'Sign in with your Google account to see and edit the verses you share.';
         $('btnSignIn').hidden = false;
         renderAll();
         return;
@@ -3322,10 +3273,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       $('gateMsg').textContent = 'Loading verses…';
       $('btnSignIn').hidden = true;
       watchAdmin();
-      // Rules from before groups don't let anyone read `meta`; that means the data has not been moved yet.
-      unsubscribeMeta = fs.onSnapshot(fs.doc(store, 'meta', 'migration'), snap => {
-        migrated = snap.exists(); route(); renderAdmin();
-      }, () => { migrated = false; route(); renderAdmin(); });
+      watchPerson();
       const progressDoc = fs.doc(store, 'progress', u.uid);
       unsubscribeProgress = fs.onSnapshot(progressDoc, snap => {
         progressRef = progressDoc;

@@ -11,15 +11,6 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn() && me() == 'admin.person@gmail.com';
     }
-    // The two accounts that shared everything before groups existed. Use lowercase addresses.
-    // They keep access to the old data until it has been moved into a group.
-    function allowed() {
-      return isAdmin() || (signedIn() && me() in ['first.person@gmail.com', 'second.person@gmail.com']);
-    }
-    // Set once the admin has moved the old data into a group; from then on the old data is read-only.
-    function moved() {
-      return exists(/databases/$(database)/documents/meta/migration);
-    }
     function personPath() {
       return /databases/$(database)/documents/people/$(me());
     }
@@ -30,10 +21,6 @@ service cloud.firestore {
       return active() && g in get(personPath()).data.groupIds;
     }
 
-    match /meta/{docId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
-    }
     // One document per person, keyed by their lowercase email: name, groupIds, active, addedAt, lastSeen.
     // Only the admin adds or changes people; a person may only update when they were last seen.
     match /people/{email} {
@@ -51,22 +38,9 @@ service cloud.firestore {
       allow read, write: if coll in ['verses', 'sets', 'config'] && (isAdmin() || inGroup(groupId));
     }
 
-    // Before groups: verses, sets and settings shared by the two accounts above.
-    match /verses/{verseId} {
-      allow read: if allowed();
-      allow write: if allowed() && !moved();
-    }
-    match /sets/{setId} {
-      allow read: if allowed();
-      allow write: if allowed() && !moved();
-    }
-    match /config/{docId} {
-      allow read: if allowed();
-      allow write: if allowed() && !moved();
-    }
     // Each person's learning progress is theirs alone.
     match /progress/{userId} {
-      allow read, write: if signedIn() && request.auth.uid == userId && (allowed() || active());
+      allow read, write: if request.auth != null && request.auth.uid == userId && (isAdmin() || active());
     }
   }
 }
