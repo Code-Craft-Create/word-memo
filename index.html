@@ -233,7 +233,15 @@ button.mode { text-align: left; display: flex; flex-direction: column; gap: 2px;
 .mode strong { font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
 .mode strong svg.ic { color: var(--accent); }
 .mode span { font-size: .8rem; color: var(--muted); }
-.mode span.mcap { margin-top: 4px; font-size: .74rem; color: var(--accent); }
+.mcap { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 999px; font-size: .72rem; font-weight: 600; color: var(--ci); background: color-mix(in srgb, var(--c) 16%, transparent); font-variant-numeric: tabular-nums; }
+.mode .mcap { margin-top: 5px; }
+.mcap svg.ic { width: .95em; height: .95em; }
+/* The levels a way of learning can raise a verse to: dots 1-6, those within reach in the stage colours. */
+.capdots { display: inline-flex; gap: 3px; align-items: center; }
+.capdots i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--line); box-sizing: border-box; }
+.capdots i.s1, .capdots i.s2, .capdots i.s3 { background: var(--c); border-color: var(--c); }
+.tutcap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .85rem; color: var(--muted); margin-top: -4px; }
+.tutcap b { color: var(--ink); font-weight: 600; }
 button.mode.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 button.primary:disabled { opacity: .5; cursor: default; filter: none; }
 .hud { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 14px; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
@@ -413,12 +421,16 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 .mini .ln i { height: 6px; border-radius: 3px; background: var(--line); flex: 1; }
 .mini .box { width: 11px; height: 11px; border-radius: 3px; border: 1.5px solid var(--muted); flex: none; transition: background .25s, border-color .25s; }
 .mini .box.on { background: var(--accent); border-color: var(--accent); }
-.mini .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.mini .tiles i { height: 26px; border-radius: 5px; border: 1.5px solid var(--line); transition: background .25s, border-color .25s; }
-.mini .tiles i.on { border-color: var(--accent); background: var(--accent-soft); }
-.mini .pills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
-.mini .pills i { height: 22px; border-radius: 5px; border: 1.5px solid var(--line); transition: background .25s, border-color .25s, transform .25s; }
-.mini .pills i.on { border-color: var(--accent); background: var(--accent-soft); transform: scale(1.1); }
+.mini .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: min(100%, 92px); align-self: center; }
+.mini .tiles i { height: 28px; border-radius: 6px; border: 1.5px solid var(--line); background: var(--bg); color: var(--muted); display: flex; align-items: center; justify-content: center; transition: background .25s, border-color .25s, color .25s; }
+.mini .tiles i svg.ic { width: 15px; height: 15px; }
+.mini .tiles i.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.mini .pills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; width: min(100%, 128px); align-self: center; }
+.mini .pills i { height: 34px; border-radius: 6px; border: 1.5px solid var(--rc); color: var(--rc); background: color-mix(in srgb, var(--rc) 10%, transparent); display: flex; align-items: center; justify-content: center; transition: background .25s, color .25s, transform .25s; }
+.mini .pills i svg.ic { width: 14px; height: 14px; }
+.mini .pills i.on { background: var(--rc); color: var(--surface); transform: scale(1.12); }
+@media (max-width: 520px) { .mini .pills { grid-template-columns: 1fr 1fr; width: min(100%, 76px); } .mini .pills i { height: 28px; } }
+.mini .pills .r0 { --rc: var(--danger); } .mini .pills .r1 { --rc: var(--warn); } .mini .pills .r2 { --rc: var(--accent); } .mini .pills .r3 { --rc: var(--ok); }
 .dpoints { font-family: var(--font-verse); font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
 .dpoints small { font-family: var(--font-ui); font-size: .8rem; font-weight: 400; color: var(--muted); }
 .floatwrap { position: relative; }
@@ -652,7 +664,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.20 (17 Oct 2026)';
+  const APP_VERSION = '1.21 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -1833,6 +1845,11 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
   // Recognising a verse is easier than saying it, so the quick ways only raise a verse part of the way.
   const capText = (cap) => cap >= MAX_BOX ? 'Can take a verse to Mastered' : `Raises levels up to ${cap}` + (cap === 2 ? ' (Learning)' : cap === 4 ? ' (Learned)' : '');
+  const capStage = (cap) => stageOfEntry({ box: cap });
+  // Small badge on each way of learning: the highest level it can raise a verse to, in that level's stage colour.
+  const capBadge = (cap) => el('small', { class: 'mcap s' + capStage(cap), title: capText(cap) }, icon('arrowup'), `up to level ${cap}`);
+  const capHigher = (cap) => { const up = MODES.filter(m => m.cap > cap).map(m => m.name); return `To go higher, use ${up.slice(0, -1).join(', ')}${up.length > 1 ? ' or ' : ''}${up[up.length - 1]}.`; };
+  const capDots = (cap) => el('span', { class: 'capdots' }, Array.from({ length: MAX_BOX }, (_, i) => el('i', { class: i < cap ? 's' + capStage(i + 1) : '' })));
   function renderSetup() {
     const root = $('learn');
     const prevScroll = (root.querySelector('.picklist') || {}).scrollTop || 0;
@@ -1906,7 +1923,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
           el('button', { type: 'button', class: 'link', onclick: () => openTutorial(firstModeSlide() + Math.max(0, MODES.findIndex(m => m.id === learnMode))) }, icon('info'), 'How this way works')),
         el('div', { class: 'modes', role: 'radiogroup', 'aria-label': 'Way of learning' }, MODES.map(m =>
           el('button', { type: 'button', class: 'mode' + (learnMode === m.id ? ' on' : ''), role: 'radio', 'aria-checked': String(learnMode === m.id), onclick: () => { learnMode = m.id; renderSetup(); } },
-            el('strong', null, icon(m.icon), m.name), el('span', null, m.desc), el('span', { class: 'mcap' }, capText(m.cap)))))
+            el('strong', null, icon(m.icon), m.name), el('span', null, m.desc), capBadge(m.cap))))
       ),
       el('div', { class: 'row' },
         el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
@@ -2465,8 +2482,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       demo: () => {
         const steps = [
           ['Pick verses', el('div', { class: 'mini' }, [0, 1, 2].map(() => el('div', { class: 'ln' }, el('span', { class: 'box' }), el('i')))), (m, on) => m.querySelectorAll('.box').forEach((b, i) => b.classList.toggle('on', on && i !== 1))],
-          ['Choose a way', el('div', { class: 'mini' }, el('div', { class: 'tiles' }, el('i'), el('i'), el('i'), el('i'))), (m, on) => m.querySelectorAll('.tiles i').forEach((b, i) => b.classList.toggle('on', on && i === 2))],
-          ['Rate yourself', el('div', { class: 'mini' }, el('div', { class: 'pills' }, el('i'), el('i'), el('i'), el('i'))), (m, on) => m.querySelectorAll('.pills i').forEach((b, i) => b.classList.toggle('on', on && i === 2))]
+          ['Choose a way', el('div', { class: 'mini' }, el('div', { class: 'tiles' }, ['turn', 'letters', 'fade', 'bolt'].map(n => el('i', null, icon(n))))), (m, on) => m.querySelectorAll('.tiles i').forEach((b, i) => b.classList.toggle('on', on && i === 2))],
+          ['Rate yourself', el('div', { class: 'mini' }, el('div', { class: 'pills' }, RATINGS.map((r, i) => el('i', { class: 'r' + i }, icon(r.icon))))), (m, on) => m.querySelectorAll('.pills i').forEach((b, i) => b.classList.toggle('on', on && i === 2))]
         ];
         const boxes = steps.map(([name, mini]) => el('div', { class: 'dstep' }, mini, name));
         return { node: el('div', { class: 'dsteps' }, boxes), frames: 5, ms: 1200, show: (f) => steps.forEach(([, mini, set], i) => { boxes[i].classList.toggle('on', f === i + 1); set(mini, f > i); }) };
@@ -2641,6 +2658,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         el('span', { class: 'kicker' }, mode ? [icon('cards'), `Ways of learning · ${tutIdx - firstModeSlide() + 1} of ${MODES.length}`] : [icon(slide.icon), slide.kicker]),
         el('button', { type: 'button', class: 'link', onclick: closeTutorial }, icon('x'), 'Close')),
       el('h3', { id: 'tutTitle' }, mode ? [icon(mode.icon), mode.name] : slide.title),
+      mode ? el('div', { class: 'tutcap' }, capBadge(mode.cap), capDots(mode.cap),
+        el('span', null, mode.cap >= MAX_BOX ? 'Can take a verse all the way to Mastered.' : ['Raises a verse to level ', el('b', null, String(mode.cap)), ' at most. ', capHigher(mode.cap)])) : null,
       box,
       el('div', { class: 'tuttext' }, slide.text),
       el('div', { class: 'tutnav' },
