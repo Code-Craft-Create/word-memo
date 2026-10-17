@@ -8,6 +8,7 @@ Open `index.html` in a browser.
 
 ## Features
 
+- A home screen shows what's due, your days in a row, the verses of your last set or session (with a button to continue), and your learning sets. A menu (top right) leads to Learn, All verses, Add a verse, and Settings & backup (account, sign out, export, import).
 - Add a verse with a passage, an optional translation and the text. Earlier translations are suggested.
 - Add several translations of the same verse, and switch between them on the board.
 - Star a favourite translation per verse (on the board card or in the form). It is shown first on the board and used for learning; during a session you can switch to another translation of the same verse with one tap.

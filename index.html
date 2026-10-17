@@ -46,16 +46,39 @@ body {
   padding-block: 20px 40px;
 }
 .wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 h1 { font-family: var(--font-verse); font-weight: 600; font-size: 1.9rem; margin: 0; text-wrap: balance; }
 .sub { color: var(--muted); margin: 2px 0 0; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
-.main { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
-@media (max-width: 820px) { .main { grid-template-columns: 1fr; } }
+.page { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.page.narrow { max-width: 640px; width: 100%; margin: 0 auto; }
+.pagehead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.pagehead h2 { margin: 0; font-family: var(--font-verse); font-weight: 600; font-size: 1.35rem; }
+button.brand { border: 0; background: none; padding: 0; text-align: left; display: flex; flex-direction: column; color: var(--ink); }
+button.brand:hover .h1 { color: var(--accent); }
+.brand .h1 { font-family: var(--font-verse); font-weight: 600; font-size: 1.9rem; line-height: 1.2; }
+.menuwrap { position: relative; }
+button.iconbtn { padding: 8px; line-height: 0; }
+.iconbtn svg { width: 22px; height: 22px; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 210px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 6px; display: flex; flex-direction: column; }
+.menu button { border: 0; background: none; text-align: left; padding: 10px 12px; border-radius: 6px; }
+.menu button:hover, .menu button[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.home { max-width: 760px; width: 100%; margin: 0 auto; }
+.today { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.today .stat b { font-size: 1.6rem; }
+.lastcard { border-color: var(--accent); }
+.lastcard .learnhead h2 { font-family: var(--font-verse); font-size: 1.3rem; }
+.vlist { display: flex; flex-direction: column; }
+.vitem { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--line); min-width: 0; }
+.vitem .ppass { font-family: var(--font-verse); font-weight: 600; }
+.vitem .vt { grid-column: 1 / -1; font-family: var(--font-verse); color: var(--muted); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.vitem .lvl { align-self: center; }
+.quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+.quick button { padding: 12px; }
 
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-@media (min-width: 821px) { .panel.sticky { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); } }
 .panel h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+.panel > .hint { margin: 0; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 label, .lab { font-size: .78rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 label .opt { text-transform: none; letter-spacing: 0; font-weight: 400; }
@@ -120,12 +143,9 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 .boardhint { font-size: .82rem; color: var(--muted); margin: -4px 0 0; }
 .empty { border: 1px dashed var(--line); border-radius: var(--radius); padding: 28px; text-align: center; color: var(--muted); }
 
-.sheet { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
-.sheet h2 { margin: 0; font-size: 1rem; }
-.sheet textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; min-height: 180px; }
+#settings textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem; min-height: 180px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .toast { color: var(--ok); font-size: .88rem; }
-.account { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .85rem; }
 .gate { max-width: 460px; margin: 40px auto 0; text-align: center; align-items: center; }
 .gate p { margin: 0; color: var(--muted); }
 button.star { border: 0; background: none; padding: 2px; line-height: 0; color: var(--muted); border-radius: 6px; }
@@ -236,15 +256,21 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
 
 <div class="wrap">
   <header>
-    <div>
-      <h1>Verse Board</h1>
-      <p class="sub">Collect the passages you are memorising.</p>
-    </div>
-    <div class="toolbar">
-      <span id="account" class="account" hidden><span id="whoami"></span><button id="btnSignOut" type="button" class="link">Sign out</button></span>
-      <button id="btnLearn" type="button" class="primary">Learn</button>
-      <button id="btnExport" type="button">Export JSON</button>
-      <button id="btnImport" type="button">Import JSON</button>
+    <button id="btnHome" type="button" class="brand" title="Home">
+      <span class="h1">Verse Board</span>
+      <span class="sub">Collect the passages you are memorising.</span>
+    </button>
+    <div class="menuwrap">
+      <button id="btnMenu" type="button" class="iconbtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false" aria-controls="menu" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <nav id="menu" class="menu" hidden aria-label="Main">
+        <button type="button" data-view="home">Home</button>
+        <button type="button" data-view="learn">Learn</button>
+        <button type="button" data-view="board">All verses</button>
+        <button type="button" data-view="add">Add a verse</button>
+        <button type="button" data-view="settings">Settings &amp; backup</button>
+      </nav>
     </div>
   </header>
   <div id="syncErr" class="err" hidden></div>
@@ -256,32 +282,24 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     <div id="gateErr" class="err"></div>
   </section>
 
-  <section id="exportSheet" class="sheet" hidden>
-    <h2>Export</h2>
-    <p class="hint">A download was started where your browser allows it. You can also copy the JSON below and save it as a <code>.json</code> file.</p>
-    <textarea id="exportText" readonly></textarea>
-    <div class="row">
-      <button id="btnCopy" type="button" class="primary">Copy JSON</button>
-      <button id="btnCloseExport" type="button">Close</button>
-      <span id="copyMsg" class="toast"></span>
+  <section id="home" class="page home" hidden></section>
+
+  <section id="boardView" class="page boardcol" hidden>
+    <div class="pagehead">
+      <h2>All verses</h2>
+      <button type="button" class="primary" data-view="add">Add a verse</button>
     </div>
+    <div class="boardbar">
+      <input id="search" type="search" placeholder="Search passage or text">
+      <span id="count" class="count"></span>
+    </div>
+    <div id="filters" class="filters"></div>
+    <p class="boardhint">Select words in a verse to highlight the key part. Click a highlight to remove it.</p>
+    <div id="board" class="board"></div>
   </section>
 
-  <section id="importSheet" class="sheet" hidden>
-    <h2>Import</h2>
-    <p class="hint">Pick a file exported from Verse Board, or paste its JSON. Verses already on the board are kept; duplicates are skipped.</p>
-    <input id="importFile" type="file" accept=".json,application/json">
-    <textarea id="importText" placeholder='{"verses": [ ... ]}'></textarea>
-    <div class="row">
-      <button id="btnDoImport" type="button" class="primary">Import</button>
-      <button id="btnCloseImport" type="button">Close</button>
-      <span id="importMsg" class="toast"></span>
-    </div>
-    <div id="importErr" class="err"></div>
-  </section>
-
-  <div class="main">
-    <form id="form" class="panel sticky" novalidate>
+  <section id="addView" class="page narrow" hidden>
+    <form id="form" class="panel" novalidate>
       <h2 id="formTitle">Add a verse</h2>
       <div id="versions" class="versions"></div>
       <datalist id="translationList"></datalist>
@@ -296,23 +314,47 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       </div>
       <div id="formErr" class="err"></div>
       <div class="row formbtns">
-        <button id="btnSubmit" type="submit" class="primary">Add to board</button>
+        <button id="btnSubmit" type="submit" class="primary">Add verse</button>
         <button id="btnCancelEdit" type="button" hidden>Cancel</button>
       </div>
+      <p id="formMsg" class="toast" aria-live="polite"></p>
     </form>
-
-    <section class="boardcol">
-      <div class="boardbar">
-        <input id="search" type="search" placeholder="Search passage or text">
-        <span id="count" class="count"></span>
-      </div>
-      <div id="filters" class="filters"></div>
-      <p class="boardhint">Select words in a verse to highlight the key part. Click a highlight to remove it.</p>
-      <div id="board" class="board"></div>
-    </section>
-  </div>
+  </section>
 
   <section id="learn" class="learn" hidden></section>
+
+  <section id="settings" class="page narrow" hidden>
+    <section class="panel">
+      <h2>Account</h2>
+      <p id="accountText" class="hint">Your verses and learning progress are stored in this browser only.</p>
+      <div class="row"><button id="btnSignOut" type="button" hidden>Sign out</button></div>
+    </section>
+
+    <section class="panel">
+      <h2>Back up (export)</h2>
+      <p class="hint">Downloads all verses as a JSON file. You can also copy the JSON and save it as a <code>.json</code> file.</p>
+      <div class="row"><button id="btnExport" type="button" class="primary">Export JSON</button></div>
+      <div id="exportSheet" class="field" hidden>
+        <textarea id="exportText" readonly></textarea>
+        <div class="row">
+          <button id="btnCopy" type="button">Copy JSON</button>
+          <span id="copyMsg" class="toast"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Import</h2>
+      <p class="hint">Pick a file exported from Verse Board, or paste its JSON. Verses you already have are kept; duplicates are skipped.</p>
+      <input id="importFile" type="file" accept=".json,application/json">
+      <textarea id="importText" placeholder='{"verses": [ ... ]}'></textarea>
+      <div class="row">
+        <button id="btnDoImport" type="button" class="primary">Import</button>
+        <span id="importMsg" class="toast"></span>
+      </div>
+      <div id="importErr" class="err"></div>
+    </section>
+  </section>
 </div>
 
 <script>
@@ -554,8 +596,9 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     $('btnSubmit').textContent = 'Save changes';
     $('btnCancelEdit').hidden = false;
     $('form').classList.add('editing');
-    renderDraftTags(); renderBoard();
-    $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('formMsg').textContent = '';
+    renderDraftTags();
+    setView('add');
     $('versions').querySelector('.vpassage').focus({ preventScroll: true });
   }
   function stopEdit() {
@@ -563,13 +606,13 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     draftTags = [];
     $('formErr').textContent = '';
     $('formTitle').textContent = 'Add a verse';
-    $('btnSubmit').textContent = 'Add to board';
+    $('btnSubmit').textContent = 'Add verse';
     $('btnCancelEdit').hidden = true;
     $('form').classList.remove('editing');
     resetVersionBlocks();
     renderDraftTags(); renderBoard();
   }
-  $('btnCancelEdit').addEventListener('click', stopEdit);
+  $('btnCancelEdit').addEventListener('click', () => { stopEdit(); setView('board'); });
   $('btnAddVersion').addEventListener('click', () => { addVersionBlock().querySelector('.vtranslation').focus(); });
 
   function renderTranslationList() {
@@ -640,6 +683,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     save();
     stopEdit();
     renderAll();
+    if (existing) { setView('board'); return; }
+    $('formMsg').replaceChildren(`Added ${translations[0].passage}. Add another, or `, el('button', { type: 'button', class: 'link', 'data-view': 'board' }, 'see all verses'), '.');
     $('versions').querySelector('.vpassage').focus();
   });
 
@@ -852,6 +897,9 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       out.verses[id] = { box: Math.min(MAX_BOX, Math.max(0, Math.floor(+p.box) || 0)), due: typeof p.due === 'string' ? p.due : dayStr(), seen: Math.max(0, Math.floor(+p.seen) || 0), ...(p.last ? { last: String(p.last) } : {}) };
     }
     if (Array.isArray(raw.days)) out.days = [...new Set(raw.days.filter(d => typeof d === 'string'))].sort().slice(-400);
+    // The verses of the last session started from the setup (or the home screen), to pick up again from home.
+    const l = raw.last;
+    if (l && typeof l === 'object' && Array.isArray(l.verseIds)) out.last = { verseIds: l.verseIds.map(String), mode: String(l.mode || 'flip'), at: String(l.at || ''), ...(l.setId ? { setId: String(l.setId) } : {}) };
     return out;
   }
   function loadProgress() {
@@ -917,7 +965,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     { name: 'Perfect', desc: 'Word for word', points: 15 }
   ];
   const FADE = [0.3, 0.45, 0.6, 0.75, 0.9, 1, 1]; // share of words "Fading words" hides, by box
-  let view = 'board';
+  let view = 'home';
   let appOn = !cloud; // false while the sign-in screen is shown
   let picked = null; // ids of the verses chosen for the next session; null until the setup first opens
   let learnMode = 'flip', learnTr = '', learnShuffle = true;
@@ -980,22 +1028,96 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     $('setMsg').textContent = existing ? `Updated "${existing.name}".` : `Saved "${name}".`;
   }
 
+  // Pages: home, board (all verses), add (add or edit a verse), learn, settings. The burger menu switches between them.
+  const PAGES = { home: 'home', board: 'boardView', add: 'addView', learn: 'learn', settings: 'settings' };
   function applyView() {
-    document.querySelector('.main').hidden = !appOn || view !== 'board';
-    $('learn').hidden = !appOn || view !== 'learn';
-    $('btnLearn').hidden = !appOn;
-    $('btnLearn').textContent = view === 'learn' ? 'Back to board' : 'Learn';
-    $('btnExport').hidden = $('btnImport').hidden = !appOn;
+    for (const k in PAGES) $(PAGES[k]).hidden = !appOn || view !== k;
+    $('btnMenu').hidden = !appOn;
+    if (!appOn) closeMenu();
+    $('menu').querySelectorAll('[data-view]').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   }
   function setView(v) {
+    if (view === 'add' && v !== 'add' && editingId) stopEdit();
+    if (v === 'add' && view !== 'add') $('formMsg').textContent = '';
     view = v;
     if (session && session.finished) session = null; // an unfinished session is resumed
     hidePop();
+    closeMenu();
     applyView();
-    if (v === 'learn') renderLearn(); else renderBoard();
+    if (v === 'learn') renderLearn(); else if (v === 'home') renderHome(); else if (v === 'board') renderBoard();
     window.scrollTo({ top: 0 });
+    if (v === 'add' && !editingId) $('versions').querySelector('.vpassage').focus({ preventScroll: true });
   }
-  $('btnLearn').addEventListener('click', () => setView(view === 'learn' ? 'board' : 'learn'));
+  function closeMenu() { $('menu').hidden = true; $('btnMenu').setAttribute('aria-expanded', 'false'); }
+  $('btnMenu').addEventListener('click', () => {
+    const open = $('menu').hidden;
+    $('menu').hidden = !open;
+    $('btnMenu').setAttribute('aria-expanded', String(open));
+    if (open) ($('menu').querySelector('[aria-current]') || $('menu').querySelector('button')).focus();
+  });
+  document.addEventListener('click', (e) => {
+    const go = e.target.closest && e.target.closest('[data-view]');
+    if (go) { setView(go.dataset.view); return; }
+    if (!$('menu').hidden && !e.target.closest('.menuwrap')) closeMenu();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('menu').hidden) { closeMenu(); $('btnMenu').focus(); } });
+  $('btnHome').addEventListener('click', () => { if (appOn) setView('home'); });
+
+  // ---------- home ----------
+  function verseItem(v) {
+    const t = verseTr(v);
+    return el('div', { class: 'vitem' }, el('span', { class: 'ppass' }, t.passage), levelDots(v.id), el('span', { class: 'vt' }, t.text));
+  }
+  function renderHome() {
+    if (view !== 'home') return;
+    const due = verses.filter(v => isDue(v.id));
+    const streak = dayStreak();
+    const last = progress.last;
+    const lastVerses = last ? last.verseIds.map(id => verses.find(v => v.id === id)).filter(Boolean) : [];
+    const lastSet = last && last.setId ? sets.find(x => x.id === last.setId) : null;
+    const mode = last && MODES.find(m => m.id === last.mode);
+    const startWith = (ids, m) => { learnMode = m; setView('learn'); startSession(ids, true); };
+    let card;
+    if (lastVerses.length) {
+      const when = last.at ? new Date(last.at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+      card = el('section', { class: 'panel lastcard' },
+        el('div', { class: 'learnhead' }, el('h2', null, lastSet ? lastSet.name : 'Your last session'),
+          el('span', { class: 'count' }, [mode ? mode.name : '', when].filter(Boolean).join(' · '))),
+        el('div', { class: 'vlist' }, lastVerses.map(verseItem)),
+        el('div', { class: 'row' },
+          el('button', { type: 'button', class: 'primary', onclick: () => startWith(lastSet ? setVerseIds(lastSet) : lastVerses.map(v => v.id), mode ? mode.id : 'flip') }, 'Continue learning'),
+          el('button', { type: 'button', onclick: () => { picked = new Set(lastVerses.map(v => v.id)); setView('learn'); } }, 'Change verses or mode')));
+    } else if (verses.length) {
+      const list = (due.length ? due : verses).slice(0, 5);
+      card = el('section', { class: 'panel lastcard' },
+        el('div', { class: 'learnhead' }, el('h2', null, due.length ? 'Ready to learn' : 'Start learning'), el('span', { class: 'count' }, due.length ? `${due.length} due` : '')),
+        el('div', { class: 'vlist' }, list.map(verseItem)),
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'learn' }, 'Start a learning session')));
+    } else {
+      card = el('section', { class: 'panel' }, el('h2', null, 'Welcome'),
+        el('p', { class: 'hint' }, 'Add the first verse you want to memorise.'),
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'add' }, 'Add a verse')));
+    }
+    $('home').replaceChildren(
+      el('div', { class: 'today' },
+        el('div', { class: 'stat' }, el('b', null, String(due.length)), el('span', null, 'due today')),
+        el('div', { class: 'stat' }, el('b', null, String(streak)), el('span', null, streak === 1 ? 'day in a row' : 'days in a row')),
+        el('div', { class: 'stat' }, el('b', null, String(verses.length)), el('span', null, verses.length === 1 ? 'verse' : 'verses'))),
+      card,
+      sets.length ? el('section', { class: 'panel' }, el('h2', null, 'Learning sets'),
+        el('div', { class: 'sets' }, sets.map(st => {
+          const ids = setVerseIds(st), learned = ids.filter(id => boxOf(id) >= 3).length;
+          return el('div', { class: 'setrow' },
+            el('button', { type: 'button', class: 'setpick', onclick: () => { picked = new Set(ids); setName = st.name; setView('learn'); } },
+              el('strong', null, st.name), el('span', null, `${ids.length} verse${ids.length === 1 ? '' : 's'} · ${learned} learned · ${ids.filter(isDue).length} due`)),
+            el('div', { class: 'bar' }, el('div', { style: `width:${ids.length ? Math.round(100 * learned / ids.length) : 0}%` })));
+        }))) : '',
+      el('div', { class: 'quick' },
+        el('button', { type: 'button', 'data-view': 'learn' }, 'Learn'),
+        el('button', { type: 'button', 'data-view': 'board' }, 'All verses'),
+        el('button', { type: 'button', 'data-view': 'add' }, 'Add a verse'))
+    );
+  }
 
   function renderLearn() {
     if (view !== 'learn') return;
@@ -1086,7 +1208,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
         el('label', { class: 'check' }, shuffleBox, 'Shuffle the order')
       ),
-      el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked]) },
+      el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked], true) },
         n < minPick ? (minPick === 2 ? 'Pick at least two verses to match' : 'Pick at least one verse') : `Start with ${n} verse${n === 1 ? '' : 's'}`)
     ));
     if (n < minPick) $('btnStart').disabled = true;
@@ -1095,9 +1217,14 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     if (focusId) { const f = root.querySelector(`[data-pick="${CSS.escape(focusId)}"]`); if (f) f.focus(); }
   }
 
-  function startSession(ids) {
+  function startSession(ids, remember) {
     let list = verses.filter(v => ids.includes(v.id));
     if (!list.length) return;
+    if (remember) {
+      const st = sets.find(x => { const sid = setVerseIds(x); return sid.length === list.length && list.every(v => sid.includes(v.id)); });
+      progress.last = { verseIds: list.map(v => v.id), mode: learnMode, at: new Date().toISOString(), ...(st ? { setId: st.id } : {}) };
+      saveProgress();
+    }
     if (learnShuffle) list = shuffle(list);
     // Matching needs two verses; a single verse (e.g. "practise the tricky one again") is shown as a flip card.
     const mode = learnMode === 'match' && list.length < 2 ? 'flip' : learnMode;
@@ -1329,7 +1456,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, `Practise the ${again.length} tricky one${again.length === 1 ? '' : 's'} again`) : null,
         el('button', { type: 'button', onclick: () => startSession([...s.first.keys()]) }, 'Same verses again'),
         el('button', { type: 'button', onclick: () => { session = null; picked = null; renderSetup(); } }, 'New session'),
-        el('button', { type: 'button', onclick: () => { session = null; setView('board'); } }, 'Back to board'))
+        el('button', { type: 'button', onclick: () => { session = null; setView('home'); } }, 'Done'))
     ));
   }
   document.addEventListener('keydown', (e) => {
@@ -1339,7 +1466,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     else if (session.revealed && /^[1-4]$/.test(e.key)) rate(+e.key - 1);
   });
 
-  function renderAll() { renderTranslationList(); renderDraftTags(); renderFilters(); renderBoard(); renderLearn(); }
+  function renderAll() { renderTranslationList(); renderDraftTags(); renderFilters(); renderBoard(); renderLearn(); renderHome(); }
 
   // ---------- export ----------
   function exportJson() {
@@ -1347,7 +1474,6 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   }
   $('btnExport').addEventListener('click', () => {
     const json = exportJson();
-    $('importSheet').hidden = true;
     $('exportText').value = json;
     $('copyMsg').textContent = '';
     $('exportSheet').hidden = false;
@@ -1364,15 +1490,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
     else fallback();
   });
-  $('btnCloseExport').addEventListener('click', () => { $('exportSheet').hidden = true; });
 
   // ---------- import ----------
-  $('btnImport').addEventListener('click', () => {
-    $('exportSheet').hidden = true;
-    $('importErr').textContent = ''; $('importMsg').textContent = '';
-    $('importSheet').hidden = false;
-  });
-  $('btnCloseImport').addEventListener('click', () => { $('importSheet').hidden = true; });
   $('importFile').addEventListener('change', (e) => {
     const f = e.target.files && e.target.files[0];
     if (!f) return;
@@ -1409,7 +1528,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     appOn = on;
     applyView();
     $('gate').hidden = on;
-    if (!on) { $('exportSheet').hidden = true; $('importSheet').hidden = true; }
+    if (!on) $('exportSheet').hidden = true;
   }
   async function startCloud() {
     showApp(false);
@@ -1448,11 +1567,11 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       sets = []; setName = '';
       if (editingId) stopEdit();
       db = null; synced = new Map(); verses = [];
-      progressRef = null; progress = normalizeProgress(null); session = null; picked = null; view = 'board';
+      progressRef = null; progress = normalizeProgress(null); session = null; picked = null; view = 'home';
       $('syncErr').hidden = true;
       if (!user) {
         showApp(false);
-        $('account').hidden = true;
+        $('btnSignOut').hidden = true;
         $('gateMsg').textContent = deniedEmail
           ? `${deniedEmail} does not have access to these verses. Sign in with an account that was added in the Firestore rules.`
           : 'Sign in with your Google account to see and edit the verses you share.';
@@ -1461,8 +1580,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         renderAll();
         return;
       }
-      $('whoami').textContent = user.email || user.displayName || '';
-      $('account').hidden = false;
+      $('accountText').textContent = `Signed in as ${user.email || user.displayName || 'you'}. Verses and learning sets are shared; your learning progress is your own.`;
+      $('btnSignOut').hidden = false;
       $('gateMsg').textContent = 'Loading verses…';
       $('btnSignIn').hidden = true;
       unsubscribe = fs.onSnapshot(fs.collection(store, 'verses'), snap => {
@@ -1481,12 +1600,14 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       unsubscribeSets = fs.onSnapshot(fs.collection(store, 'sets'), snap => {
         sets = sortSets(snap.docs.map(d => normalizeSet({ ...d.data(), id: d.id })).filter(Boolean));
         if (!session) renderLearn();
+        renderHome();
       }, showSetsError);
       const progressDoc = fs.doc(store, 'progress', user.uid);
       unsubscribeProgress = fs.onSnapshot(progressDoc, snap => {
         progressRef = progressDoc;
         progress = normalizeProgress(snap.exists() ? snap.data() : null);
         renderBoard();
+        renderHome();
         if (!session) renderLearn();
       }, showProgressError);
     });
