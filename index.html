@@ -114,6 +114,25 @@ a.lookup { display: inline-flex; align-items: center; gap: .3em; font-size: .85r
 a.lookup:hover { color: var(--accent); }
 a.lookup > svg.ic { width: 1.05em; height: 1.05em; }
 #compareAll { align-self: flex-start; }
+.passrow { display: flex; gap: 8px; }
+button.bookbtn { flex: 1 1 auto; min-width: 0; justify-content: space-between; background: var(--bg); text-align: left; font-family: var(--font-verse); font-weight: 600; padding: 9px 11px; }
+button.bookbtn span { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.bookbtn.empty { color: var(--muted); font-family: var(--font-ui); font-weight: 400; }
+button.bookbtn > svg.ic { color: var(--muted); }
+.passrow input.vref { flex: 0 1 9rem; width: 9rem; min-width: 5.5rem; }
+.bookpanel { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 8px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+.bookgrid { max-height: 300px; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+.bookgrid .lab { margin-top: 2px; }
+.books { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 4px; }
+.books button { padding: 5px 9px; font-size: .88rem; text-align: left; background: var(--bg); border-color: transparent; }
+.books button:hover { border-color: var(--accent); }
+.books button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.trlist { display: flex; flex-direction: column; }
+.trrow { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr auto auto; align-items: center; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.trrow .trname { color: var(--muted); font-size: .88rem; min-width: 0; overflow-wrap: anywhere; }
+#settings select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.tradd input[type=text] { flex: 2 1 10rem; width: auto; min-width: 0; }
+.tradd input#trCode { flex: 1 1 7rem; }
 
 .taginput { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
 .taginput:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -351,6 +370,21 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     </section>
 
     <section class="panel">
+      <h2 data-icon="book">Translations</h2>
+      <p class="hint">The translations you use and their language. Passages are shown with the book names of a translation's language, for example "Johannes 3,16" for a German one. Translations not listed here are shown in English.</p>
+      <div id="trList" class="trlist"></div>
+      <div id="trUnlisted" class="suggestions"></div>
+      <div class="row tradd">
+        <input id="trCode" type="text" list="knownTrList" placeholder="Abbreviation" aria-label="Abbreviation" autocomplete="off">
+        <input id="trName" type="text" placeholder="Full name (optional)" aria-label="Full name" autocomplete="off">
+        <select id="trLang" aria-label="Language"></select>
+        <button id="btnAddTr" type="button" data-icon="plus">Add</button>
+      </div>
+      <datalist id="knownTrList"></datalist>
+      <div id="trErr" class="err"></div>
+    </section>
+
+    <section class="panel">
       <h2 data-icon="download">Back up (export)</h2>
       <p class="hint">Downloads all verses as a JSON file. You can also copy the JSON and save it as a <code>.json</code> file.</p>
       <div class="row"><button id="btnExport" type="button" class="primary" data-icon="download">Export JSON</button></div>
@@ -393,7 +427,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.11 (17 Oct 2026)';
+  const APP_VERSION = '1.12 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -429,7 +463,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     layers: '<path d="M12 3 2 8l10 5 10-5z"/><path d="m2 13 10 5 10-5"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
     next: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
-    external: '<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>'
+    external: '<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    down: '<path d="m6 9 6 6 6-6"/>'
   };
   function icon(name) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -460,6 +495,106 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
 
   const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const norm = (s) => String(s || '').trim();
+
+  // ---------- Bible books and translations ----------
+  // The 66 books of the Protestant canon: id, English name, German name, number of chapters, and extra
+  // abbreviations for reading typed passages. Numbered books list their abbreviations without the number.
+  const BOOKS = [
+    ['GEN', 'Genesis', '1. Mose', 50, 'gen ge gn 1mo 1mos'], ['EXO', 'Exodus', '2. Mose', 40, 'ex exo exod 2mo 2mos'],
+    ['LEV', 'Leviticus', '3. Mose', 27, 'lev le lv 3mo 3mos'], ['NUM', 'Numbers', '4. Mose', 36, 'num nu nm numeri 4mo 4mos'],
+    ['DEU', 'Deuteronomy', '5. Mose', 34, 'deut deu dt dtn deuteronomium 5mo 5mos'], ['JOS', 'Joshua', 'Josua', 24, 'josh jos'],
+    ['JDG', 'Judges', 'Richter', 21, 'judg jdg jdgs ri richt'], ['RUT', 'Ruth', 'Rut', 4, 'ru rt'],
+    ['1SA', '1 Samuel', '1. Samuel', 31, 'sam sa sm'], ['2SA', '2 Samuel', '2. Samuel', 24, 'sam sa sm'],
+    ['1KI', '1 Kings', '1. Könige', 22, 'kgs ki kg koen kon'], ['2KI', '2 Kings', '2. Könige', 25, 'kgs ki kg koen kon'],
+    ['1CH', '1 Chronicles', '1. Chronik', 29, 'chr ch chron'], ['2CH', '2 Chronicles', '2. Chronik', 36, 'chr ch chron'],
+    ['EZR', 'Ezra', 'Esra', 10, 'ezr esr'], ['NEH', 'Nehemiah', 'Nehemia', 13, 'neh ne'], ['EST', 'Esther', 'Ester', 10, 'est esth'],
+    ['JOB', 'Job', 'Hiob', 42, 'jb hi ijob'], ['PSA', 'Psalm', 'Psalm', 150, 'ps psa pss psalms psalmen'],
+    ['PRO', 'Proverbs', 'Sprüche', 31, 'prov pr prv spr sprichwoerter'], ['ECC', 'Ecclesiastes', 'Prediger', 12, 'eccl ecc qoh pred kohelet koh'],
+    ['SNG', 'Song of Songs', 'Hohelied', 8, 'song sos sng songofsolomon hld hoheslied'], ['ISA', 'Isaiah', 'Jesaja', 66, 'isa jes'],
+    ['JER', 'Jeremiah', 'Jeremia', 52, 'jer jr'], ['LAM', 'Lamentations', 'Klagelieder', 5, 'lam klgl'],
+    ['EZK', 'Ezekiel', 'Hesekiel', 48, 'ezek eze ezk hes ezechiel'], ['DAN', 'Daniel', 'Daniel', 12, 'dan dn'],
+    ['HOS', 'Hosea', 'Hosea', 14, 'hos'], ['JOL', 'Joel', 'Joel', 4, 'jl'], ['AMO', 'Amos', 'Amos', 9, 'am amo'],
+    ['OBA', 'Obadiah', 'Obadja', 1, 'obad ob oba'], ['JON', 'Jonah', 'Jona', 4, 'jon jnh'], ['MIC', 'Micah', 'Micha', 7, 'mic mi'],
+    ['NAM', 'Nahum', 'Nahum', 3, 'nah'], ['HAB', 'Habakkuk', 'Habakuk', 3, 'hab'], ['ZEP', 'Zephaniah', 'Zefanja', 3, 'zeph zep zef zephanja'],
+    ['HAG', 'Haggai', 'Haggai', 2, 'hag hg'], ['ZEC', 'Zechariah', 'Sacharja', 14, 'zech zec sach'], ['MAL', 'Malachi', 'Maleachi', 4, 'mal'],
+    ['MAT', 'Matthew', 'Matthäus', 28, 'matt mt mat matth'], ['MRK', 'Mark', 'Markus', 16, 'mk mrk mr mar'],
+    ['LUK', 'Luke', 'Lukas', 24, 'lk luk lu'], ['JHN', 'John', 'Johannes', 21, 'jn jhn joh'],
+    ['ACT', 'Acts', 'Apostelgeschichte', 28, 'act ac apg'], ['ROM', 'Romans', 'Römer', 16, 'rom ro rm roem'],
+    ['1CO', '1 Corinthians', '1. Korinther', 16, 'cor co kor'], ['2CO', '2 Corinthians', '2. Korinther', 13, 'cor co kor'],
+    ['GAL', 'Galatians', 'Galater', 6, 'gal ga'], ['EPH', 'Ephesians', 'Epheser', 6, 'eph'], ['PHP', 'Philippians', 'Philipper', 4, 'phil php'],
+    ['COL', 'Colossians', 'Kolosser', 4, 'col kol'], ['1TH', '1 Thessalonians', '1. Thessalonicher', 5, 'thess th thes'],
+    ['2TH', '2 Thessalonians', '2. Thessalonicher', 3, 'thess th thes'], ['1TI', '1 Timothy', '1. Timotheus', 6, 'tim ti tm'],
+    ['2TI', '2 Timothy', '2. Timotheus', 4, 'tim ti tm'], ['TIT', 'Titus', 'Titus', 3, 'tit'], ['PHM', 'Philemon', 'Philemon', 1, 'phlm phm philem'],
+    ['HEB', 'Hebrews', 'Hebräer', 13, 'heb hebr'], ['JAS', 'James', 'Jakobus', 5, 'jas jak jm'],
+    ['1PE', '1 Peter', '1. Petrus', 5, 'pet pe pt petr'], ['2PE', '2 Peter', '2. Petrus', 3, 'pet pe pt petr'],
+    ['1JN', '1 John', '1. Johannes', 5, 'jn jo joh'], ['2JN', '2 John', '2. Johannes', 1, 'jn jo joh'], ['3JN', '3 John', '3. Johannes', 1, 'jn jo joh'],
+    ['JUD', 'Jude', 'Judas', 1, 'jud'], ['REV', 'Revelation', 'Offenbarung', 22, 'rev rv offb apk revelations']
+  ].map(([id, en, de, chapters, abbr], i) => ({ id, names: { en, de }, chapters, nt: i >= 39, abbr: abbr.split(' ') }));
+  const BOOK = Object.fromEntries(BOOKS.map(b => [b.id, b]));
+  // Lowercase, umlauts written out (Römer, Roemer) or dropped (Romer), no spaces or dots: "1. Könige" -> "1koenige".
+  const foldKeys = (s) => {
+    const base = String(s || '').toLowerCase().replace(/ß/g, 'ss');
+    return [...new Set([base.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue'), base.normalize('NFD').replace(/[̀-ͯ]/g, '')]
+      .map(k => k.replace(/[^a-z0-9]/g, '')))];
+  };
+  BOOKS.forEach(b => {
+    const num = /^\d/.test(b.id) ? b.id[0] : '';
+    b.keys = [...new Set([...foldKeys(b.names.en), ...foldKeys(b.names.de), ...b.abbr.map(a => num + a)])];
+  });
+  const BOOK_BY_KEY = new Map();
+  BOOKS.forEach(b => b.keys.forEach(k => { if (!BOOK_BY_KEY.has(k)) BOOK_BY_KEY.set(k, b.id); }));
+  // Book names exist in these languages; a translation is shown with the book names of its language.
+  const LANGUAGES = { en: 'English', de: 'German' };
+  const bookName = (id, lang) => BOOK[id] ? BOOK[id].names[lang] || BOOK[id].names.en : id;
+
+  // Chapter and verses are stored English style ("3:16,18"). German style ("3,16.18") is converted;
+  // dashes and spaces are tidied. Returns '' when it is not chapter[:verses].
+  function cleanRef(raw) {
+    let r = norm(raw).replace(/[‐-―]/g, '-').replace(/\s+/g, '');
+    if (!r.includes(':') && r.includes(',')) r = r.replace(/[,.]/g, c => c === ',' ? ':' : ',');
+    return /^\d+(:\d+[a-z]*([-.,]\d+(:\d+)?[a-z]*)*)?$/i.test(r) ? r.toLowerCase() : '';
+  }
+  // Shows chapter and verses the way the language writes them: "3:16,18" in English, "3,16.18" in German.
+  const refText = (ref, lang) => lang === 'de' ? ref.replace(/[:,]/g, c => c === ':' ? ',' : '.') : ref;
+  // Reads a typed passage such as "John 3:16", "Joh 3,16-18" or "1. Mose 1:1" into { book, ref }; null if it cannot.
+  function parsePassage(s) {
+    const m = norm(s).match(/^((?:[1-3]\.?\s*)?[^\d]+?)\s*(\d.*)$/);
+    if (!m) return null;
+    const book = foldKeys(m[1]).map(k => BOOK_BY_KEY.get(k)).find(Boolean);
+    const ref = cleanRef(m[2]);
+    return book && ref ? { book, ref } : null;
+  }
+  // Translations you have registered in the settings, with the language their book names are shown in.
+  const DEFAULT_TRANSLATIONS = [
+    { code: 'NGÜ', name: 'Neue Genfer Übersetzung', lang: 'de' },
+    { code: 'SLT2000', name: 'Schlachter 2000', lang: 'de' },
+    { code: 'NIV', name: 'New International Version', lang: 'en' }
+  ];
+  // Common translations, so typing their abbreviation in the settings fills in the name and language.
+  const KNOWN_TRANSLATIONS = [
+    ...DEFAULT_TRANSLATIONS,
+    { code: 'ESV', name: 'English Standard Version', lang: 'en' }, { code: 'KJV', name: 'King James Version', lang: 'en' },
+    { code: 'NKJV', name: 'New King James Version', lang: 'en' }, { code: 'NLT', name: 'New Living Translation', lang: 'en' },
+    { code: 'NASB', name: 'New American Standard Bible', lang: 'en' }, { code: 'CSB', name: 'Christian Standard Bible', lang: 'en' },
+    { code: 'LUT', name: 'Lutherbibel 2017', lang: 'de' }, { code: 'ELB', name: 'Elberfelder Bibel', lang: 'de' },
+    { code: 'HFA', name: 'Hoffnung für alle', lang: 'de' }, { code: 'GNB', name: 'Gute Nachricht Bibel', lang: 'de' },
+    { code: 'NeÜ', name: 'Neue evangelistische Übersetzung', lang: 'de' }, { code: 'EÜ', name: 'Einheitsübersetzung 2016', lang: 'de' }
+  ];
+  function normalizeTranslations(list) {
+    if (!Array.isArray(list)) return null;
+    const seen = new Set();
+    return list.map(t => ({ code: norm(t && t.code), name: norm(t && t.name), lang: LANGUAGES[t && t.lang] ? t.lang : 'en' }))
+      .filter(t => t.code && !seen.has(t.code.toLowerCase()) && seen.add(t.code.toLowerCase()));
+  }
+  let translationList = DEFAULT_TRANSLATIONS.map(t => ({ ...t }));
+  // A translation typed on a verse matches a registered one by its Bibleserver code, so "SLT" finds "SLT2000".
+  const translationInfo = (name) => norm(name) ? translationList.find(t => bibleserverCode(t.code) === bibleserverCode(norm(name))) || null : null;
+  const langOf = (name) => (translationInfo(name) || { lang: 'en' }).lang;
+  const passageText = (book, ref, lang) => bookName(book, lang) + ' ' + refText(ref, lang);
+  // The passage of a translation in its language, e.g. "Johannes 3,16" for the NGÜ; the typed text when the book is unknown.
+  const passageOf = (t) => t.book && BOOK[t.book] ? passageText(t.book, t.ref, langOf(t.translation)) : t.passage;
+  // The same passage in any translation gives the same key.
+  const refKey = (t) => t.book ? t.book + ' ' + t.ref : t.passage.toLowerCase();
 
   // Highlights are [start, end) character ranges into a translation's text, kept sorted and non-overlapping.
   function cleanHighlights(list, len) {
@@ -504,7 +639,11 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     const fallbackPassage = norm(raw.passage) || norm((list[0] || {}).passage);
     list = list.map(t => {
       const text = norm(t && t.text);
-      return { passage: norm(t && t.passage) || fallbackPassage, translation: norm(t && t.translation), text, highlights: cleanHighlights(t && t.highlights, text.length), ...(t && t.favorite === true ? { favorite: true } : {}) };
+      // Book and chapter:verse; older verses only have the typed passage, which is read when possible.
+      let ref = t && BOOK[t.book] ? { book: t.book, ref: cleanRef(t.ref) } : null;
+      if (!ref || !ref.ref) ref = parsePassage(norm(t && t.passage) || fallbackPassage);
+      const passage = norm(t && t.passage) || fallbackPassage || (ref ? passageText(ref.book, ref.ref, 'en') : '');
+      return { passage, ...(ref || {}), translation: norm(t && t.translation), text, highlights: cleanHighlights(t && t.highlights, text.length), ...(t && t.favorite === true ? { favorite: true } : {}) };
     }).filter(t => t.passage && t.text);
     if (!list.length) return null;
     let favSeen = false; // at most one favourite translation
@@ -590,48 +729,106 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     niv: 'NIV'
   };
   const bibleserverCode = (translation) => BIBLESERVER_CODES[translation.toLowerCase().replace(/[\s.\-]/g, '')] || translation.toUpperCase();
-  // Bibleserver reads both "John 3:16" and "Johannes 3,16", so the passage is passed on as typed.
+  // Passages are passed on in English ("John 3:16"), which Bibleserver reads for every translation.
   // Several translations are joined with dots (NIV.NGÜ) and shown one after another.
   function bibleserverUrl(passage, translations) {
     const codes = [...new Set(translations.filter(Boolean).map(bibleserverCode))];
     return 'https://www.bibleserver.com/' + (codes.length ? encodeURIComponent(codes.join('.')) + '/' : '') + encodeURIComponent(passage);
   }
+  // A block's book and chapter:verse; each falls back to the first block's when left empty.
+  function blockRef(block) {
+    const first = $('versions').firstElementChild;
+    const own = norm(block.querySelector('.vref').value);
+    return { book: block._book || first._book, ref: cleanRef(own || first.querySelector('.vref').value), typed: own };
+  }
+  const blockLang = (block) => langOf(block.querySelector('.vtranslation').value);
   // The "compare" link lists every translation used on the board or typed in the form.
   function updateCompareAll() {
     const link = $('compareAll');
-    const passage = norm($('versions').querySelector('.vpassage').value);
+    const { book, ref } = blockRef($('versions').firstElementChild);
     const typed = [...$('versions').querySelectorAll('.vtranslation')].map(i => norm(i.value));
     const codes = new Set([...allTranslations(), ...typed].filter(Boolean).map(bibleserverCode));
-    link.hidden = !passage || codes.size < 2;
-    if (!link.hidden) link.href = bibleserverUrl(passage, [...codes]);
+    link.hidden = !book || !ref || codes.size < 2;
+    if (!link.hidden) link.href = bibleserverUrl(passageText(book, ref, 'en'), [...codes]);
   }
-  $('versions').addEventListener('input', updateCompareAll);
+  // Refreshes the book buttons and Bibleserver links after anything in the form changes.
+  function refreshBlocks() {
+    [...$('versions').children].forEach(b => { b._updateBook(); b._updateLookup(); });
+    updateCompareAll();
+  }
+  $('versions').addEventListener('input', refreshBlocks);
+
+  // ---------- form: book picker ----------
+  // A button shows the chosen book in the language of the block's translation; it opens a filterable grid of all books.
+  function closeBookPanels(except) {
+    document.querySelectorAll('.bookpanel').forEach(p => {
+      if (p === except || p.hidden) return;
+      p.hidden = true;
+      p.closest('.version').querySelector('.bookbtn').setAttribute('aria-expanded', 'false');
+    });
+  }
+  function renderBookPanel(block) {
+    const panel = block.querySelector('.bookpanel');
+    const lang = blockLang(block);
+    const qs = foldKeys(panel.querySelector('.bookfilter').value).filter(Boolean);
+    const shown = BOOKS.filter(b => !qs.length || [...b.keys, ...foldKeys(bookName(b.id, lang))].some(k => qs.some(q => k.startsWith(q))));
+    const pick = (id) => {
+      block._book = id;
+      closeBookPanels();
+      refreshBlocks();
+      block.querySelector('.vref').focus();
+    };
+    const group = (nt) => {
+      const list = shown.filter(b => b.nt === nt);
+      return list.length ? [el('span', { class: 'lab' }, nt ? 'New Testament' : 'Old Testament'),
+        el('div', { class: 'books' }, list.map(b => el('button', { type: 'button', class: block._book === b.id ? 'on' : '', onclick: () => pick(b.id) }, bookName(b.id, lang))))] : [];
+    };
+    panel._first = shown[0] ? () => pick(shown[0].id) : null;
+    panel.querySelector('.bookgrid').replaceChildren(...group(false), ...group(true), ...(shown.length ? [] : [el('span', { class: 'hint' }, 'No book matches.')]));
+  }
+  function toggleBookPanel(block) {
+    const panel = block.querySelector('.bookpanel');
+    const open = panel.hidden;
+    closeBookPanels();
+    if (!open) return;
+    panel.hidden = false;
+    block.querySelector('.bookbtn').setAttribute('aria-expanded', 'true');
+    panel.querySelector('.bookfilter').value = '';
+    renderBookPanel(block);
+    panel.querySelector('.bookfilter').focus();
+  }
+  document.addEventListener('click', (e) => { if (!e.target.closest('.bookfield')) closeBookPanels(); });
+
   let blockSeq = 0;
   function addVersionBlock(values) {
     const n = blockSeq++;
     const blocks = $('versions');
-    const first = !blocks.children.length;
-    const firstPassage = first ? '' : norm(blocks.querySelector('.vpassage').value);
+    const first = blocks.firstElementChild;
     const block = el('fieldset', { class: 'version' },
       el('div', { class: 'vhead' },
         el('span', { class: 'vtitle' }),
         el('span', { class: 'vend' },
           el('span', { class: 'vstar' }),
-          first ? null : el('button', { type: 'button', class: 'link danger', onclick: () => { block.remove(); numberBlocks(); } }, icon('trash'), 'Remove'))
-      ),
-      el('div', { class: 'field' },
-        el('label', { for: 'passage-' + n }, 'Passage'),
-        el('input', { id: 'passage-' + n, class: 'vpassage', type: 'text', placeholder: 'e.g. John 3:16', autocomplete: 'off' })
+          first ? el('button', { type: 'button', class: 'link danger', onclick: () => { block.remove(); numberBlocks(); } }, icon('trash'), 'Remove') : null)
       ),
       el('div', { class: 'field' },
         el('label', { for: 'translation-' + n }, 'Translation ', el('span', { class: 'opt' }, '(optional)')),
         el('input', { id: 'translation-' + n, class: 'vtranslation', type: 'text', list: 'translationList', placeholder: 'Pick one or type a new one', autocomplete: 'off' })
       ),
+      el('div', { class: 'field bookfield' },
+        el('label', { for: 'book-' + n }, 'Passage'),
+        el('div', { class: 'passrow' },
+          el('button', { id: 'book-' + n, type: 'button', class: 'bookbtn', 'aria-haspopup': 'true', 'aria-expanded': 'false', onclick: () => toggleBookPanel(block) }),
+          el('input', { class: 'vref', type: 'text', placeholder: '3:16', 'aria-label': 'Chapter and verse', autocomplete: 'off' })),
+        el('div', { class: 'bookpanel', hidden: '' },
+          el('input', { class: 'bookfilter', type: 'search', placeholder: 'Type to filter, e.g. Joh', 'aria-label': 'Filter books', autocomplete: 'off' }),
+          el('div', { class: 'bookgrid' }))
+      ),
       el('div', { class: 'field' },
         el('div', { class: 'labelrow' },
           el('label', { for: 'content-' + n }, 'Text'),
           el('a', { class: 'lookup', target: '_blank', rel: 'noopener', title: 'Opens the passage on bibleserver.com, so you can copy the text here' }, icon('external'), 'Look up on Bibleserver')),
-        el('textarea', { id: 'content-' + n, class: 'vtext', placeholder: first ? 'For God so loved the world…' : 'The same verse in another translation' }),
+        el('textarea', { id: 'content-' + n, class: 'vtext', placeholder: first ? 'The same verse in another translation' : 'For God so loved the world…' }),
         el('div', { class: 'hlpreview', 'aria-label': 'Highlight preview' }),
         el('span', { class: 'hint hlhint' }, 'Select words in the text or the preview to highlight them.')
       )
@@ -639,23 +836,49 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     blocks.append(block);
     block._hl = values && values.highlights ? values.highlights.map(h => ({ ...h })) : [];
     block._fav = !!(values && values.favorite);
-    block.querySelector('.vpassage').value = values ? values.passage : firstPassage;
+    const refInput = block.querySelector('.vref');
     const ta = block.querySelector('.vtext');
     if (values) {
       block.querySelector('.vtranslation').value = values.translation || '';
       ta.value = values.text;
-    }
+      block._book = values.book || '';
+      // A passage whose book could not be read is shown as typed, so it can be corrected.
+      refInput.value = values.book ? refText(values.ref, langOf(values.translation)) : values.passage;
+    } else if (first) {
+      block._book = first._book;
+      refInput.value = first.querySelector('.vref').value;
+    } else block._book = '';
     block._prevText = ta.value;
+    // Chapter and verse follow the translation's style: "3:16" in English, "3,16" in German.
+    block.querySelector('.vtranslation').addEventListener('change', () => {
+      const ref = cleanRef(refInput.value);
+      if (ref) refInput.value = refText(ref, blockLang(block));
+    });
+    // A whole passage typed into the chapter field ("Joh 3,16") picks the book too.
+    refInput.addEventListener('change', () => {
+      const p = /[a-zäöü]{2}/i.test(refInput.value) && parsePassage(refInput.value);
+      if (p) { block._book = p.book; refInput.value = refText(p.ref, blockLang(block)); refreshBlocks(); }
+    });
+    const panel = block.querySelector('.bookpanel');
+    panel.querySelector('.bookfilter').addEventListener('input', (e) => { e.stopPropagation(); renderBookPanel(block); });
+    panel.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); closeBookPanels(); block.querySelector('.bookbtn').focus(); }
+      else if (e.key === 'Enter' && e.target.classList.contains('bookfilter')) { e.preventDefault(); if (panel._first) panel._first(); }
+    });
+    block._updateBook = () => {
+      const btn = block.querySelector('.bookbtn');
+      const book = block._book || (first && first._book);
+      btn.classList.toggle('empty', !book);
+      btn.replaceChildren(el('span', null, book ? bookName(book, blockLang(block)) : 'Choose a book'), icon('down'));
+      if (!panel.hidden) renderBookPanel(block);
+    };
     // The Bibleserver link follows this block's passage (or the first block's) and translation.
     const lookup = block.querySelector('.lookup');
     block._updateLookup = () => {
-      const passage = norm(block.querySelector('.vpassage').value) || norm(blocks.querySelector('.vpassage').value);
-      lookup.hidden = !passage;
-      if (passage) lookup.href = bibleserverUrl(passage, [norm(block.querySelector('.vtranslation').value)]);
+      const { book, ref } = blockRef(block);
+      lookup.hidden = !book || !ref;
+      if (!lookup.hidden) lookup.href = bibleserverUrl(passageText(book, ref, 'en'), [norm(block.querySelector('.vtranslation').value)]);
     };
-    block.querySelector('.vpassage').addEventListener('input', () => [...blocks.children].forEach(b => b._updateLookup()));
-    block.querySelector('.vtranslation').addEventListener('input', block._updateLookup);
-    block._updateLookup();
     // Keep draft highlights attached to their words while the text is typed or pasted.
     ta.addEventListener('input', () => {
       block._hl = carryHighlights({ text: block._prevText, highlights: block._hl }, ta.value);
@@ -664,6 +887,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     });
     renderPreview(block);
     numberBlocks();
+    refreshBlocks();
     return block;
   }
   function renderPreview(block) {
@@ -705,7 +929,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     $('formMsg').textContent = '';
     renderDraftTags();
     setView('add');
-    $('versions').querySelector('.vpassage').focus({ preventScroll: true });
+    $('versions').querySelector('.vtranslation').focus({ preventScroll: true });
   }
   function stopEdit() {
     editingId = null;
@@ -722,7 +946,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   $('btnAddVersion').addEventListener('click', () => { addVersionBlock().querySelector('.vtranslation').focus(); });
 
   function renderTranslationList() {
-    $('translationList').replaceChildren(...allTranslations().map(t => el('option', { value: t })));
+    const used = allTranslations().filter(t => !translationList.some(r => r.code === t));
+    $('translationList').replaceChildren(...translationList.map(t => el('option', { value: t.code }, t.name)), ...used.map(t => el('option', { value: t })));
     updateCompareAll();
   }
 
@@ -764,18 +989,25 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     e.preventDefault();
     if (norm($('tagInput').value)) addDraftTag($('tagInput').value);
     const blocks = [...$('versions').children];
-    const firstPassage = norm(blocks[0].querySelector('.vpassage').value);
     const translations = [];
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i];
-      const passage = norm(b.querySelector('.vpassage').value) || firstPassage;
       const translation = norm(b.querySelector('.vtranslation').value);
       const text = norm(b.querySelector('.vtext').value);
       const label = blocks.length > 1 ? ` for translation ${i + 1}` : '';
-      if (i > 0 && !text && !translation && !norm(b.querySelector('.vpassage').value)) continue; // untouched extra block
-      if (!passage) { $('formErr').textContent = 'Enter the passage reference, e.g. Romans 8:28.'; b.querySelector('.vpassage').focus(); return; }
+      let { book, ref, typed } = blockRef(b);
+      if (i > 0 && !text && !translation && !typed) continue; // untouched extra block
+      const parsed = /[a-zäöü]{2}/i.test(typed) && parsePassage(typed);
+      if (parsed) {
+        ({ book, ref } = parsed);
+        b._book = book; b.querySelector('.vref').value = refText(ref, langOf(translation)); // later blocks fall back to these
+      }
+      if (!book) { $('formErr').textContent = `Choose the book${label}.`; b.querySelector('.bookbtn').focus(); return; }
+      if (!ref) { $('formErr').textContent = `Enter chapter and verse${label}, e.g. 3:16 or 3:16-18.`; b.querySelector('.vref').focus(); return; }
+      if (parseInt(ref, 10) > BOOK[book].chapters) { $('formErr').textContent = `${bookName(book, langOf(translation))} has ${BOOK[book].chapters} chapter${BOOK[book].chapters === 1 ? '' : 's'}.`; b.querySelector('.vref').focus(); return; }
       if (!text) { $('formErr').textContent = `Enter the verse text${label}.`; b.querySelector('.vtext').focus(); return; }
-      translations.push({ passage, translation, text, highlights: carryHighlights({ text: b.querySelector('.vtext').value, highlights: b._hl }, text), ...(b._fav ? { favorite: true } : {}) });
+      // The typed passage is kept too, in the translation's language, for older versions of the app.
+      translations.push({ passage: passageText(book, ref, langOf(translation)), book, ref, translation, text, highlights: carryHighlights({ text: b.querySelector('.vtext').value, highlights: b._hl }, text), ...(b._fav ? { favorite: true } : {}) });
     }
     $('formErr').textContent = '';
     const existing = editingId && verses.find(v => v.id === editingId);
@@ -791,8 +1023,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     stopEdit();
     renderAll();
     if (existing) { setView('board'); return; }
-    $('formMsg').replaceChildren(`Added ${translations[0].passage}. Add another, or `, el('button', { type: 'button', class: 'link', 'data-view': 'board' }, 'see all verses'), '.');
-    $('versions').querySelector('.vpassage').focus();
+    $('formMsg').replaceChildren(`Added ${passageOf(translations[0])}. Add another, or `, el('button', { type: 'button', class: 'link', 'data-view': 'board' }, 'see all verses'), '.');
+    $('versions').querySelector('.vtranslation').focus();
   });
 
   // ---------- board ----------
@@ -835,7 +1067,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     const q = norm($('search').value).toLowerCase();
     const shown = verses.filter(v =>
       (!activeTag || (v.tags || []).includes(activeTag)) &&
-      (!q || v.translations.some(t => (t.passage + ' ' + t.text + ' ' + t.translation).toLowerCase().includes(q)))
+      (!q || v.translations.some(t => (passageOf(t) + ' ' + (t.book ? bookName(t.book, 'en') + ' ' + bookName(t.book, 'de') : t.passage) + ' ' + t.text + ' ' + t.translation).toLowerCase().includes(q)))
     );
     $('count').textContent = shown.length === verses.length ? `${verses.length} verse${verses.length === 1 ? '' : 's'}` : `${shown.length} of ${verses.length} verses`;
     if (!shown.length) {
@@ -849,7 +1081,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       const cur = v.translations[idx];
       let picker = null;
       if (v.translations.length > 1) {
-        picker = el('select', { 'aria-label': 'Translation for ' + cur.passage, onchange: (e) => { shownVersion.set(v.id, +e.target.value); renderBoard(); } },
+        picker = el('select', { 'aria-label': 'Translation for ' + passageOf(cur), onchange: (e) => { shownVersion.set(v.id, +e.target.value); renderBoard(); } },
           v.translations.map((t, i) => el('option', { value: String(i) }, versionLabel(t, i))));
         picker.value = String(idx);
         const label = cur.favorite ? `${versionLabel(cur, idx)} is your favourite translation` : `Make ${versionLabel(cur, idx)} the favourite translation`;
@@ -864,7 +1096,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         picker = el('span', { class: 'tr' }, cur.translation);
       }
       return el('article', { class: 'card' + (editingId === v.id ? ' editing' : '') },
-        el('div', { class: 'ref' }, el('span', { class: 'passage' }, cur.passage), picker),
+        el('div', { class: 'ref' }, el('span', { class: 'passage' }, passageOf(cur)), picker),
         el('blockquote', { 'data-vid': v.id, 'data-ti': String(idx) }, renderText(cur.text, cur.highlights || [])),
         el('div', { class: 'foot' },
           el('div', { class: 'tags' }, (v.tags || []).map(t => el('button', { type: 'button', class: 'chip', title: 'Show only ' + t, onclick: () => { activeTag = t; renderBoard(); renderFilters(); } }, t))),
@@ -1153,7 +1385,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     applyView();
     if (v === 'learn') renderLearn(); else if (v === 'home') renderHome(); else if (v === 'board') renderBoard();
     window.scrollTo({ top: 0 });
-    if (v === 'add' && !editingId) $('versions').querySelector('.vpassage').focus({ preventScroll: true });
+    if (v === 'add' && !editingId) $('versions').querySelector('.vtranslation').focus({ preventScroll: true });
   }
   function closeMenu() { $('menu').hidden = true; $('btnMenu').setAttribute('aria-expanded', 'false'); }
   $('btnMenu').addEventListener('click', () => {
@@ -1174,7 +1406,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   function flameIcon() { const i = icon('flame'); i.classList.add('flame'); return i; }
   function verseItem(v) {
     const t = verseTr(v);
-    return el('div', { class: 'vitem' }, el('span', { class: 'ppass' }, t.passage), levelDots(v.id), el('span', { class: 'vt' }, t.text));
+    return el('div', { class: 'vitem' }, el('span', { class: 'ppass' }, passageOf(t)), levelDots(v.id), el('span', { class: 'vt' }, t.text));
   }
   function renderHome() {
     if (view !== 'home') return;
@@ -1300,7 +1532,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
           const t = verseTr(v);
           const cb = el('input', { type: 'checkbox', 'data-pick': v.id, onchange: (e) => { if (e.target.checked) picked.add(v.id); else picked.delete(v.id); renderSetup(); } });
           cb.checked = picked.has(v.id);
-          return el('label', { class: 'pick' }, cb, el('span', { class: 'ppass' }, t.passage), el('span', { class: 'ptext' }, t.text), el('span', { class: 'due' }, dueLabel(v.id)), levelDots(v.id));
+          return el('label', { class: 'pick' }, cb, el('span', { class: 'ppass' }, passageOf(t)), el('span', { class: 'ptext' }, t.text), el('span', { class: 'due' }, dueLabel(v.id)), levelDots(v.id));
         })),
         el('div', { class: 'row savesets' }, nameInput,
           el('button', { type: 'button', id: 'btnSaveSet', onclick: saveSelectionAsSet }, icon('bookmark'), typedSet ? 'Update set' : 'Save as set'),
@@ -1379,13 +1611,13 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
 
   function cardFaces(v) {
     const t = cardTr(v);
-    const ref = t.passage + (t.translation ? ' · ' + t.translation : '');
+    const ref = passageOf(t) + (t.translation ? ' · ' + t.translation : '');
     const text = () => el('div', { class: 'vtxt' }, renderText(t.text, t.highlights || []));
     const tap = el('div', { class: 'tap' }, 'Tap the card to turn it around');
     switch (session.mode) {
       case 'reverse': return [
         [el('div', { class: 'kicker' }, 'Which passage is this?'), text(), tap],
-        [el('div', { class: 'big' }, t.passage), t.translation ? el('div', { class: 'kicker' }, t.translation) : null, el('div', { class: 'vtxt soft' }, t.text)]
+        [el('div', { class: 'big' }, passageOf(t)), t.translation ? el('div', { class: 'kicker' }, t.translation) : null, el('div', { class: 'vtxt soft' }, t.text)]
       ];
       case 'letters': return [
         [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt letters' }, firstLetters(t.text)), tap],
@@ -1396,7 +1628,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt' }, fadedText(t.text, true))]
       ];
       default: return [
-        [el('div', { class: 'kicker' }, 'Say the verse'), el('div', { class: 'big' }, t.passage), t.translation ? el('div', { class: 'kicker' }, t.translation) : null, tap],
+        [el('div', { class: 'kicker' }, 'Say the verse'), el('div', { class: 'big' }, passageOf(t)), t.translation ? el('div', { class: 'kicker' }, t.translation) : null, tap],
         [el('div', { class: 'kicker' }, ref), text()]
       ];
     }
@@ -1485,8 +1717,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     if (!s.pick || s.pick.kind === kind) { s.pick = s.pick && s.pick.id === id ? null : { kind, id }; return renderMatch(); }
     const textId = kind === 'text' ? id : s.pick.id, refId = kind === 'ref' ? id : s.pick.id;
     s.pick = null;
-    const passageOf = (vid) => verseTr(verses.find(v => v.id === vid)).passage;
-    if (textId !== refId && passageOf(textId) !== passageOf(refId)) {
+    const keyOf = (vid) => refKey(verseTr(verses.find(v => v.id === vid)));
+    if (textId !== refId && keyOf(textId) !== keyOf(refId)) {
       s.misses.set(textId, (s.misses.get(textId) || 0) + 1);
       s.streak = 0; s.gain = 0;
       s.wrong = [textId, refId];
@@ -1514,7 +1746,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       const done = (kind === 'text' ? s.doneText : s.doneRef).has(id);
       const cls = 'mitem m' + kind + (done ? ' done' : '') + (s.pick && s.pick.kind === kind && s.pick.id === id ? ' sel' : '')
         + (s.wrong && s.wrong[kind === 'text' ? 0 : 1] === id ? ' wrong' : '');
-      const b = el('button', { type: 'button', class: cls, onclick: () => matchTap(kind, id) }, kind === 'text' ? el('span', null, t.text) : t.passage);
+      const b = el('button', { type: 'button', class: cls, onclick: () => matchTap(kind, id) }, kind === 'text' ? el('span', null, t.text) : passageOf(t));
       if (done) b.disabled = true;
       return b;
     };
@@ -1558,7 +1790,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       el('div', { class: 'stats' }, RATINGS.map((r, i) => el('div', { class: 'stat' }, el('b', null, String(counts[i])), el('span', null, r.name)))),
       el('div', { class: 'results' }, [...s.first].map(([id, r]) => {
         const v = verses.find(x => x.id === id);
-        return v ? el('div', null, el('span', { class: 'ppass' }, verseTr(v).passage), el('span', { class: 'due' }, RATINGS[r].name), levelDots(id)) : null;
+        return v ? el('div', null, el('span', { class: 'ppass' }, passageOf(verseTr(v))), el('span', { class: 'due' }, RATINGS[r].name), levelDots(id)) : null;
       })),
       el('div', { class: 'row' },
         again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, icon('again'), `Practise the ${again.length} tricky one${again.length === 1 ? '' : 's'} again`) : null,
@@ -1574,7 +1806,59 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     else if (session.revealed && /^[1-4]$/.test(e.key)) rate(+e.key - 1);
   });
 
-  function renderAll() { renderTranslationList(); renderDraftTags(); renderFilters(); renderBoard(); renderLearn(); renderHome(); }
+  function renderAll() { renderTranslationList(); renderTranslationSettings(); renderDraftTags(); renderFilters(); renderBoard(); renderLearn(); renderHome(); }
+
+  // ---------- settings: translations ----------
+  // Shared like the verses: in this browser's storage, or in shared mode in the Firestore document `config/translations`.
+  const TR_KEY = 'verseBoard.translations.v1';
+  if (!cloud) {
+    try { translationList = normalizeTranslations(JSON.parse(localStorage.getItem(TR_KEY))) || translationList; } catch (e) {}
+  }
+  function storeTranslations(list) {
+    translationList = list;
+    $('trErr').textContent = '';
+    if (!cloud) { try { localStorage.setItem(TR_KEY, JSON.stringify(list)); } catch (e) {} }
+    else if (db) fs.setDoc(fs.doc(db, 'config', 'translations'), { items: list, updatedAt: new Date().toISOString() }).catch(showTranslationsError);
+    renderAll(); refreshBlocks();
+  }
+  function showTranslationsError(err) {
+    $('trErr').textContent = err && err.code === 'permission-denied'
+      ? 'Translations cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.'
+      : 'Could not save the translations: ' + (err && err.message || err);
+  }
+  const langOptions = (sel) => Object.entries(LANGUAGES).map(([k, name]) => el('option', { value: k, ...(k === sel ? { selected: '' } : {}) }, name));
+  function renderTranslationSettings() {
+    $('trList').replaceChildren(...translationList.map((t, i) => {
+      const used = verses.filter(v => v.translations.some(x => translationInfo(x.translation) === t)).length;
+      return el('div', { class: 'trrow' },
+        el('strong', null, t.code),
+        el('span', { class: 'trname' }, [t.name, used ? `${used} verse${used === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')),
+        el('select', { 'aria-label': 'Language of ' + t.code, onchange: (e) => storeTranslations(translationList.map((x, j) => j === i ? { ...x, lang: e.target.value } : x)) }, langOptions(t.lang)),
+        el('button', { type: 'button', class: 'link danger', title: 'Remove ' + t.code, 'aria-label': 'Remove ' + t.code, onclick: () => storeTranslations(translationList.filter((x, j) => j !== i)) }, icon('trash')));
+    }), ...(translationList.length ? [] : [el('p', { class: 'hint' }, 'No translations yet.')]));
+    // Translations typed on verses but not registered yet can be added with one click.
+    const unlisted = allTranslations().filter(t => !translationInfo(t));
+    $('trUnlisted').replaceChildren(...(unlisted.length ? [el('span', { class: 'hint' }, 'Also on your verses:')] : []),
+      ...unlisted.map(t => el('button', { type: 'button', class: 'chip suggest', onclick: () => { $('trCode').value = t; fillKnown(); $('trCode').focus(); } }, '+ ' + t)));
+    $('knownTrList').replaceChildren(...KNOWN_TRANSLATIONS.filter(k => !translationInfo(k.code)).map(k => el('option', { value: k.code }, k.name)));
+  }
+  // Typing the abbreviation of a well-known translation fills in its name and language.
+  function fillKnown() {
+    const code = norm($('trCode').value).toLowerCase();
+    const k = KNOWN_TRANSLATIONS.find(x => x.code.toLowerCase() === code);
+    if (k) { $('trName').value = k.name; $('trLang').value = k.lang; }
+  }
+  $('trLang').replaceChildren(...langOptions('en'));
+  $('trCode').addEventListener('input', fillKnown);
+  function addTranslation() {
+    const code = norm($('trCode').value);
+    if (!code) { $('trErr').textContent = 'Type the abbreviation, e.g. ESV.'; $('trCode').focus(); return; }
+    if (translationList.some(t => t.code.toLowerCase() === code.toLowerCase())) { $('trErr').textContent = `${code} is already in the list.`; return; }
+    storeTranslations([...translationList, { code, name: norm($('trName').value), lang: $('trLang').value }]);
+    $('trCode').value = ''; $('trName').value = ''; $('trLang').value = 'en';
+  }
+  $('btnAddTr').addEventListener('click', addTranslation);
+  [$('trCode'), $('trName')].forEach(i => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addTranslation(); } }));
 
   // ---------- export ----------
   function exportJson() {
@@ -1654,7 +1938,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     let store;
     try { store = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
     catch (e) { store = fs.getFirestore(app); }
-    let unsubscribe = null, unsubscribeProgress = null, unsubscribeSets = null;
+    let unsubscribe = null, unsubscribeProgress = null, unsubscribeSets = null, unsubscribeTranslations = null;
     let deniedEmail = null;
 
     $('btnSignIn').addEventListener('click', () => {
@@ -1672,6 +1956,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       if (unsubscribe) { unsubscribe(); unsubscribe = null; }
       if (unsubscribeProgress) { unsubscribeProgress(); unsubscribeProgress = null; }
       if (unsubscribeSets) { unsubscribeSets(); unsubscribeSets = null; }
+      if (unsubscribeTranslations) { unsubscribeTranslations(); unsubscribeTranslations = null; }
+      translationList = DEFAULT_TRANSLATIONS.map(t => ({ ...t }));
       sets = []; setName = '';
       if (editingId) stopEdit();
       db = null; synced = new Map(); verses = [];
@@ -1710,6 +1996,11 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         if (!session) renderLearn();
         renderHome();
       }, showSetsError);
+      // Until someone changes them in the settings, the default translations are used.
+      unsubscribeTranslations = fs.onSnapshot(fs.doc(store, 'config', 'translations'), snap => {
+        translationList = (snap.exists() && normalizeTranslations(snap.data().items)) || DEFAULT_TRANSLATIONS.map(t => ({ ...t }));
+        renderAll(); refreshBlocks();
+      }, showTranslationsError);
       const progressDoc = fs.doc(store, 'progress', user.uid);
       unsubscribeProgress = fs.onSnapshot(progressDoc, snap => {
         progressRef = progressDoc;

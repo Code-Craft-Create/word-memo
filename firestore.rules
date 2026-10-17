@@ -14,6 +14,10 @@ service cloud.firestore {
     match /sets/{setId} {
       allow read, write: if allowed();
     }
+    // App settings shared by both people, such as the list of translations and their languages.
+    match /config/{docId} {
+      allow read, write: if allowed();
+    }
     // Each person's learning progress is theirs alone.
     match /progress/{userId} {
       allow read, write: if allowed() && request.auth.uid == userId;
