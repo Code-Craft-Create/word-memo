@@ -109,6 +109,10 @@ button:has(> svg.ic) { display: inline-flex; align-items: center; justify-conten
 button.link:has(> svg.ic) { gap: .3em; }
 button.link > svg.ic { width: 1.05em; height: 1.05em; }
 button.link.danger:hover, button.link.armed { color: var(--danger); }
+.labelrow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+a.lookup { display: inline-flex; align-items: center; gap: .3em; font-size: .85rem; color: var(--muted); text-decoration: none; }
+a.lookup:hover { color: var(--accent); }
+a.lookup > svg.ic { width: 1.05em; height: 1.05em; }
 
 .taginput { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
 .taginput:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -422,7 +426,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     bookmark: '<path d="M6 3h12v18l-6-4-6 4z"/>',
     layers: '<path d="M12 3 2 8l10 5 10-5z"/><path d="m2 13 10 5 10-5"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-    next: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>'
+    next: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+    external: '<path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>'
   };
   function icon(name) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -576,6 +581,18 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   }
 
   // ---------- form: translation blocks ----------
+  // Bibleserver codes for translations people commonly type under other names; anything else is passed on as typed.
+  const BIBLESERVER_CODES = {
+    ngü: 'NGÜ', ngu: 'NGÜ', ngü2011: 'NGÜ', ngu2011: 'NGÜ', neuegenfer: 'NGÜ', neuegenferübersetzung: 'NGÜ', neuegenferuebersetzung: 'NGÜ',
+    slt: 'SLT', slt2000: 'SLT', sch2000: 'SLT', schlachter: 'SLT', schlachter2000: 'SLT',
+    niv: 'NIV'
+  };
+  // Bibleserver reads both "John 3:16" and "Johannes 3,16", so the passage is passed on as typed.
+  function bibleserverUrl(passage, translation) {
+    const key = translation.toLowerCase().replace(/[\s.\-]/g, '');
+    const code = BIBLESERVER_CODES[key] || translation.toUpperCase();
+    return 'https://www.bibleserver.com/' + (code ? encodeURIComponent(code) + '/' : '') + encodeURIComponent(passage);
+  }
   let blockSeq = 0;
   function addVersionBlock(values) {
     const n = blockSeq++;
@@ -598,7 +615,9 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         el('input', { id: 'translation-' + n, class: 'vtranslation', type: 'text', list: 'translationList', placeholder: 'Pick one or type a new one', autocomplete: 'off' })
       ),
       el('div', { class: 'field' },
-        el('label', { for: 'content-' + n }, 'Text'),
+        el('div', { class: 'labelrow' },
+          el('label', { for: 'content-' + n }, 'Text'),
+          el('a', { class: 'lookup', target: '_blank', rel: 'noopener', title: 'Opens the passage on bibleserver.com, so you can copy the text here' }, icon('external'), 'Look up on Bibleserver')),
         el('textarea', { id: 'content-' + n, class: 'vtext', placeholder: first ? 'For God so loved the world…' : 'The same verse in another translation' }),
         el('div', { class: 'hlpreview', 'aria-label': 'Highlight preview' }),
         el('span', { class: 'hint hlhint' }, 'Select words in the text or the preview to highlight them.')
@@ -614,6 +633,16 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       ta.value = values.text;
     }
     block._prevText = ta.value;
+    // The Bibleserver link follows this block's passage (or the first block's) and translation.
+    const lookup = block.querySelector('.lookup');
+    block._updateLookup = () => {
+      const passage = norm(block.querySelector('.vpassage').value) || norm(blocks.querySelector('.vpassage').value);
+      lookup.hidden = !passage;
+      if (passage) lookup.href = bibleserverUrl(passage, norm(block.querySelector('.vtranslation').value));
+    };
+    block.querySelector('.vpassage').addEventListener('input', () => [...blocks.children].forEach(b => b._updateLookup()));
+    block.querySelector('.vtranslation').addEventListener('input', block._updateLookup);
+    block._updateLookup();
     // Keep draft highlights attached to their words while the text is typed or pasted.
     ta.addEventListener('input', () => {
       block._hl = carryHighlights({ text: block._prevText, highlights: block._hl }, ta.value);
