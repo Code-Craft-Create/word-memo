@@ -268,6 +268,14 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
 .rate .r2 { color: var(--accent); }
 .rate .r3 { color: var(--ok); } .rate .r3:hover { border-color: var(--ok); }
 .keys { font-size: .8rem; color: var(--muted); text-align: center; }
+.startbar { position: sticky; bottom: 0; z-index: 2; margin: 0 -4px -4px; padding: 10px 4px 4px; background: var(--surface); }
+.startbar button { width: 100%; }
+.pickfold { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); font-size: .9rem; }
+@media (max-width: 520px) {
+  .modes { grid-template-columns: 1fr 1fr; align-items: start; }
+  .mode:not(.on) span { display: none; }
+  .tradd input[type=text], .tradd input#trCode { flex-basis: 100%; }
+}
 @media (hover: none) { .keys { display: none; } }
 .score { font-family: var(--font-verse); font-size: 2.6rem; font-weight: 600; line-height: 1; }
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -521,7 +529,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       <span id="count" class="count"></span>
     </div>
     <div id="filters" class="filters"></div>
-    <p class="boardhint">Select words in a verse to highlight the key part. Click a highlight to remove it.</p>
+    <p class="boardhint">Select words in a verse to highlight the key part. Tap or click a highlight to remove it.</p>
     <div id="board" class="board"></div>
   </section>
 
@@ -613,7 +621,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       <h2 data-icon="upload">Import</h2>
       <p class="hint">Pick a file exported from Word Memo, or paste its JSON. Verses, sets and translations you already have are kept; duplicates are skipped.</p>
       <label class="check"><input id="importProgress" type="checkbox"> Also restore my learning progress (only for verses with no progress yet)</label>
-      <input id="importFile" type="file" accept=".json,application/json">
+      <input id="importFile" type="file" accept=".json,application/json" hidden>
+      <div class="row"><button id="btnPickFile" type="button" data-icon="upload">Choose a backup file</button></div>
       <textarea id="importText" placeholder='{"verses": [ ... ]}'></textarea>
       <div class="row">
         <button id="btnDoImport" type="button" class="primary" data-icon="upload">Import</button>
@@ -642,7 +651,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.18 (17 Oct 2026)';
+  const APP_VERSION = '1.19 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -1655,6 +1664,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   let appOn = !cloud; // false while the sign-in screen is shown
   let picked = null; // ids of the verses chosen for the next session; null until the setup first opens
   let learnMode = 'flip', learnTr = '', learnShuffle = true;
+  let pickOpen = true; // the verse list in the setup; folded after picking a set or the due verses
   let session = null;
 
   // ---------- learning sets ----------
@@ -1691,7 +1701,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   function setRow(st, on) {
     const ids = setVerseIds(st), c = stageCounts(ids);
     return el('div', { class: 'setrow' + (on ? ' on' : '') },
-      el('button', { type: 'button', class: 'setpick', 'aria-pressed': String(on), onclick: () => { picked = new Set(ids); setName = st.name; renderSetup(); } },
+      el('button', { type: 'button', class: 'setpick', 'aria-pressed': String(on), onclick: () => { picked = new Set(ids); setName = st.name; pickOpen = false; renderSetup(); } },
         el('strong', null, st.name), stageMinis(ids, c)),
       setProgress(c),
       el('button', { type: 'button', class: 'link danger', onclick: () => {
@@ -1795,7 +1805,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         el('div', { class: 'sets' }, sets.map(st => {
           const ids = setVerseIds(st), c = stageCounts(ids);
           return el('div', { class: 'setrow' },
-            el('button', { type: 'button', class: 'setpick', onclick: () => { picked = new Set(ids); setName = st.name; setView('learn'); } },
+            el('button', { type: 'button', class: 'setpick', onclick: () => { picked = new Set(ids); setName = st.name; pickOpen = false; setView('learn'); } },
               el('strong', null, st.name), stageMinis(ids, c)),
             setProgress(c));
         }))) : '',
@@ -1868,7 +1878,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       el('div', { class: 'field' },
         el('div', { class: 'lab' }, 'Verses'),
         el('div', { class: 'filters' },
-          el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked(due) }, icon('clock'), `Due now · ${due.length}`),
+          el('button', { type: 'button', class: 'chip suggest', onclick: () => { pickOpen = false; setPicked(due); } }, icon('clock'), `Due now · ${due.length}`),
           tagCounts().map(([t, c]) => {
             const tagged = verses.filter(v => v.tags.includes(t));
             const all = tagged.every(v => picked.has(v.id));
@@ -1876,6 +1886,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
               onclick: () => { tagged.forEach(v => all ? picked.delete(v.id) : picked.add(v.id)); renderSetup(); } }, `${t} · ${c}`);
           })
         ),
+        !pickOpen ? el('div', { class: 'pickfold' }, el('span', null, `${n} of ${verses.length} verses selected`),
+          el('button', { type: 'button', class: 'link', onclick: () => { pickOpen = true; renderSetup(); } }, icon('down'), 'Show the list')) :
         el('div', { class: 'picklist' }, el('label', { class: 'pick pickall' }, allBox,
           el('span', { class: 'ppass' }, n === verses.length ? 'Deselect all' : 'Select all'),
           el('span', { class: 'due' }, `${n} of ${verses.length} selected`)), verses.map(v => {
@@ -1899,11 +1911,11 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
         el('label', { class: 'check' }, shuffleBox, 'Shuffle the order')
       ),
-      el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked], true) }, icon('play'),
-        n < minPick ? (minPick === 2 ? 'Pick at least two verses to match' : 'Pick at least one verse') : `Start with ${n} verse${n === 1 ? '' : 's'}`)
+      el('div', { class: 'startbar' }, el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked], true) }, icon('play'),
+        n < minPick ? (minPick === 2 ? 'Pick at least two verses to match' : 'Pick at least one verse') : `Start with ${n} verse${n === 1 ? '' : 's'}`))
     ));
     if (n < minPick) $('btnStart').disabled = true;
-    root.querySelector('.picklist').scrollTop = prevScroll;
+    if (root.querySelector('.picklist')) root.querySelector('.picklist').scrollTop = prevScroll;
     if (typing != null) { nameInput.focus(); nameInput.setSelectionRange(typing, typing); }
     if (focusId) { const f = root.querySelector(`[data-pick="${CSS.escape(focusId)}"]`); if (f) f.focus(); }
   }
@@ -1957,6 +1969,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const s = session, v = currentVerse();
     if (!v) return;
     const text = cardTr(v).text;
+    s.partsText = text;
     if (s.mode === 'fade') {
       const words = tokenize(text).map((tk, i) => tk.core ? i : -1).filter(i => i >= 0);
       s.hidden = new Set(shuffle(words).slice(0, Math.max(1, Math.round(words.length * FADE[boxOf(v.id)]))));
@@ -2041,6 +2054,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const v = s.finished ? null : currentVerse();
     if (!v) return renderSummary();
     const staged = STAGED.includes(s.mode);
+    // The other person edited the verse meanwhile: start the card again with the new text.
+    if (staged && s.result == null && s.partsText !== cardTr(v).text) setupCard();
     let card;
     if (staged) card = el('div', { class: 'face stage' }, stageFace(v));
     else {
@@ -2208,7 +2223,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   // "Which passage is this?" (needs another verse for wrong answers) or "Which word is missing?".
   function lightningQuestion(v) {
     const t = verseTr(v), key = refKey(t);
-    const refs = [...new Map(verses.filter(x => x.id !== v.id).map(verseTr).filter(x => refKey(x) !== key).map(x => [refKey(x), passageOf(x)])).values()];
+    // Wrong passages come from verses in the same language first, so the language alone doesn't give the answer away.
+    const lang = langOf(t.translation), others = verses.filter(x => x.id !== v.id).map(verseTr).filter(x => refKey(x) !== key);
+    const same = shuffle(others.filter(x => langOf(x.translation) === lang)), rest = shuffle(others.filter(x => langOf(x.translation) !== lang));
+    const refs = [...new Map([...same, ...rest].map(x => [refKey(x), passageOf(x)])).values()];
     const toks = tokenize(t.text);
     // Words of four letters or more make better gaps; shorter ones only when there are none.
     const longer = (n) => toks.map((tk, i) => [...tk.core].length >= n ? i : -1).filter(i => i >= 0);
@@ -2219,7 +2237,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (gaps.length && words.length > 1) kinds.push('gap');
     if (!kinds.length) return null;
     const kind = kinds[Math.floor(Math.random() * kinds.length)];
-    if (kind === 'which') { const answer = passageOf(t); return { id: v.id, kind, t, answer, options: shuffle([answer, ...shuffle(refs).slice(0, 3)]) }; }
+    if (kind === 'which') { const answer = passageOf(t); return { id: v.id, kind, t, answer, options: shuffle([answer, ...refs.slice(0, 3)]) }; }
     const gap = gaps[Math.floor(Math.random() * gaps.length)], answer = toks[gap].core;
     const wrong = shuffle(words.filter(c => c.toLowerCase() !== answer.toLowerCase())).slice(0, 3);
     return { id: v.id, kind, t, gap, answer, options: shuffle([answer, ...wrong]) };
@@ -2360,7 +2378,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       el('div', { class: 'row' },
         again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, icon('again'), `Practise the ${again.length} tricky one${again.length === 1 ? '' : 's'} again`) : null,
         el('button', { type: 'button', onclick: () => startSession([...s.first.keys()]) }, icon('turn'), 'Same verses again'),
-        el('button', { type: 'button', onclick: () => { session = null; picked = null; renderSetup(); } }, icon('sliders'), 'New session'),
+        el('button', { type: 'button', onclick: () => { session = null; picked = null; pickOpen = true; renderSetup(); } }, icon('sliders'), 'New session'),
         el('button', { type: 'button', onclick: () => { session = null; setView('home'); } }, icon('check'), 'Done'))
     ));
   }
@@ -2839,6 +2857,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     r.readAsText(f);
   });
   $('btnDoImport').addEventListener('click', doImport);
+  $('btnPickFile').addEventListener('click', () => $('importFile').click());
 
   function doImport() {
     $('importErr').textContent = ''; $('importMsg').textContent = '';
