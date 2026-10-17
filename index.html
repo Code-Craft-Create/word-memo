@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Word Memo</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#34449a">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,7 +62,10 @@ h1 { font-family: var(--font-verse); font-weight: 600; font-size: 1.9rem; margin
 .page.narrow { max-width: 640px; width: 100%; margin: 0 auto; }
 .pagehead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .pagehead h2 { margin: 0; font-family: var(--font-verse); font-weight: 600; font-size: 1.35rem; }
-button.brand { border: 0; background: none; padding: 0; text-align: left; display: flex; flex-direction: column; color: var(--ink); }
+button.brand { border: 0; background: none; padding: 0; text-align: left; display: flex; align-items: center; gap: 12px; color: var(--ink); }
+.brand .logo { width: 46px; height: 46px; flex: none; }
+.brand .brandtext { display: flex; flex-direction: column; }
+@media (max-width: 520px) { .brand .logo { width: 38px; height: 38px; } }
 button.brand:hover .h1 { color: var(--accent); }
 .brand .h1 { font-family: var(--font-verse); font-weight: 600; font-size: 1.9rem; line-height: 1.2; }
 .menuwrap { position: relative; }
@@ -504,8 +511,11 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 <div class="wrap">
   <header>
     <button id="btnHome" type="button" class="brand" title="Home">
-      <span class="h1">Word Memo</span>
-      <span class="sub">Collect the passages you are memorising.</span>
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 57 C14 45 5 35 5 23 C5 14 12 8 20.5 8 C26 8 30 11 32 15.5 C34 11 38 8 43.5 8 C52 8 59 14 59 23 C59 35 50 45 32 57 Z" fill="var(--accent)"/><path d="M51 24 Q43 22 36 25" fill="none" stroke="var(--hl)" stroke-width="5.5" stroke-linecap="round"/><g fill="none" stroke="var(--surface)" stroke-width="2.8" stroke-linecap="round"><path d="M32 19 V50"/><path d="M13 24 Q21 22 28 25"/><path d="M14.5 35 Q22 33 28 36"/><path d="M49.5 35 Q42 33 36 36"/></g></svg>
+      <span class="brandtext">
+        <span class="h1">Word Memo</span>
+        <span class="sub">Collect the passages you are memorising.</span>
+      </span>
     </button>
     <div class="menuwrap">
       <button id="btnMenu" type="button" class="iconbtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false" aria-controls="menu" hidden>
@@ -664,7 +674,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.21 (17 Oct 2026)';
+  const APP_VERSION = '1.22 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
