@@ -23,19 +23,20 @@ Open `index.html` in a browser.
 - Save a selection of verses as a named learning set to focus on over several days. Sets are shared, and each set shows how many of its verses you have learned and how many are due. Saving under an existing name updates that set.
 - Each rating moves the verse to a level (0 to 6, shown as dots) and schedules when it is due again, from the same day up to a month later. A verse can rise at most 2 levels a day, and the quick ways (Which verse?, Match up, Lightning round) only raise it up to level 2. Sessions give points, runs of known verses earn a bonus, and the app counts the days in a row you practised.
 
-- Share one collection of verses with other people: everyone signs in with Google and sees and edits the same verses, live. It also works offline and syncs later.
+- Share verses with other people: everyone signs in with Google and sees and edits the same verses, live. It also works offline and syncs later.
+- Groups: the admin (one Google account named in the Firestore rules) adds people and puts them in groups under Settings → People & groups. Each group has its own verses, learning sets and translations; someone in several groups switches between them in the menu. Removing someone's access keeps their learning progress in case they come back.
 
 ## Storage
 
 While `FIREBASE_CONFIG` at the top of the script in `index.html` is empty, verses are stored in the browser's `localStorage` only.
 
-Once it is filled in, verses are stored in Cloud Firestore in the `verses` collection (one document per verse, keyed by its id), and only the Google accounts listed in the Firestore rules can read or change them.
+Once it is filled in, the data is stored in Cloud Firestore. Each group's verses, learning sets and translations list live under `groups/{groupId}/verses`, `…/sets` and `…/config/translations`; the group's name is in `groups/{groupId}`. Each person is a document `people/{email}` (lowercase email: name, groupIds, active, addedAt, lastSeen) that only the admin can change.
 
-The list of translations is shared: in `localStorage` under `verseBoard.translations.v1`, or in the Firestore document `config/translations`. If you set up sharing before this existed, publish the current [`firestore.rules`](firestore.rules) again (see below), or changes to it cannot be saved.
+Before the admin moves the data into a group (Settings → People & groups → Move existing data), the app uses the older top-level collections `verses`, `sets` and `config`, shared by the two accounts listed in the rules. The move copies them into the first group and writes `meta/migration`; from then on the rules make the old collections read-only.
 
-Learning sets are shared: in `localStorage` under `verseBoard.sets.v1`, or in the Firestore collection `sets` (one document per set: name and verse ids).
+Locally, the list of translations is kept under `verseBoard.translations.v1` and learning sets under `verseBoard.sets.v1`.
 
-Learning progress is personal. Locally it is kept in `localStorage` under `verseBoard.progress.v1`. In shared mode each person's progress is one document `progress/{uid}`, which only they can read or change. If you set up sharing before learning sessions or learning sets existed, paste the current [`firestore.rules`](firestore.rules) into Firestore → Rules again (with your two addresses) and publish, or progress cannot be saved.
+Learning progress is personal. Locally it is kept in `localStorage` under `verseBoard.progress.v1`. In shared mode each person's progress is one document `progress/{uid}`, which only they can read or change. The group being shown is remembered per device under `verseBoard.group.v1`.
 
 ## Set up sharing
 
@@ -44,9 +45,19 @@ Everything below fits in Firebase's free Spark plan.
 1. **Create the Firebase project.** At [console.firebase.google.com](https://console.firebase.google.com), add a project (Google Analytics is not needed).
 2. **Turn on Google sign-in.** Go to Build → Authentication → Get started → Sign-in method → Google → Enable, then save.
 3. **Create the database.** Go to Build → Firestore Database → Create database. Pick a location near you and start in production mode.
-4. **Restrict access.** In Firestore → Rules, paste the contents of [`firestore.rules`](firestore.rules). Replace the two example addresses with the Google accounts that should have access, written in lowercase. Then publish.
+4. **Restrict access.** In Firestore → Rules, paste the contents of [`firestore.rules`](firestore.rules). Replace `admin.person@gmail.com` with the Google account that manages people (written in lowercase). If you used the app before groups existed, also replace the two example addresses in `allowed()` with the two accounts that shared it. Then publish.
 5. **Register the web app.** In Project settings → General → Your apps, add a Web app (`</>`); Firebase Hosting is not needed. Copy the `firebaseConfig` object it shows into `FIREBASE_CONFIG` in `index.html`. These values are not secret: access is controlled by the rules.
 6. **Host the page.** In this repo's Settings → Pages, set the source to "Deploy from a branch", with branch `main` and folder `/ (root)`. GitHub Pages is free for public repositories; private repositories need a paid GitHub plan. The page will be at `https://<github-user>.github.io/word-memo/`.
 7. **Allow the domain.** In Authentication → Settings → Authorized domains, add `<github-user>.github.io`.
 
 To move verses you already have, open the old page and use **Export JSON**. Then sign in on the shared page and use **Import JSON**. Duplicates are skipped.
+
+## Add people and groups
+
+1. Sign in with the admin account and open Settings → People & groups.
+2. If you used the app before groups existed, export a backup, then press **Move existing data** once. It copies your verses, sets and translations into a first group and adds you (and the other person, if you type their address) to it.
+3. Create a group for the new people, or use an existing one.
+4. Under Add a person, type their Google address and name, tick their group(s) and press Add person.
+5. Send them the app link. They sign in with Google and see their group.
+
+No rules change is needed for this. Remove access takes effect at once; Give access back restores it.

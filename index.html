@@ -100,7 +100,7 @@ h2 > svg.ic { vertical-align: -.17em; margin-right: .4em; color: var(--accent); 
 .field { display: flex; flex-direction: column; gap: 5px; }
 label, .lab { font-size: .78rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 label .opt { text-transform: none; letter-spacing: 0; font-weight: 400; }
-input[type=text], input[type=search], textarea {
+input[type=text], input[type=email], input[type=search], textarea {
   font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; width: 100%;
 }
 textarea { resize: vertical; min-height: 110px; font-family: var(--font-verse); font-size: 1rem; }
@@ -139,6 +139,24 @@ button.bookbtn > svg.ic { color: var(--muted); }
 .books button:hover { border-color: var(--accent); }
 .books button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 600; }
 .trlist { display: flex; flex-direction: column; }
+.menugroup { display: flex; align-items: center; gap: 8px; padding: 10px 12px 6px; margin-top: 4px; border-top: 1px solid var(--line); font-size: .85rem; color: var(--muted); }
+.menugroup select { flex: 1; min-width: 0; }
+.admin { display: flex; flex-direction: column; gap: 14px; }
+.admin h3 { margin: 0; font-size: .95rem; }
+.admin .field { gap: 4px; }
+.adminlist { display: flex; flex-direction: column; }
+.personrow { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
+.personrow.off { opacity: .6; }
+.personrow .who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.personrow .who input { font-weight: 600; max-width: 14rem; }
+.personrow .email { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.personrow .seen { color: var(--muted); font-size: .8rem; }
+.grouprow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.grouprow input { flex: 1; min-width: 8rem; max-width: 16rem; }
+.grouprow .count { color: var(--muted); font-size: .85rem; }
+.addperson { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.addperson > .suggestions, .addperson > .row, .addperson > .hint { grid-column: 1 / -1; }
+@media (max-width: 560px) { .addperson { grid-template-columns: 1fr; } }
 .trrow { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr auto auto; align-items: center; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--line); }
 .trrow .trname { color: var(--muted); font-size: .88rem; min-width: 0; overflow-wrap: anywhere; }
 #settings select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
@@ -529,6 +547,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         <button type="button" data-view="add" data-icon="plus">Add a verse</button>
         <button type="button" data-view="settings" data-icon="gear">Settings &amp; backup</button>
         <button type="button" data-tutorial data-icon="info">How learning works</button>
+        <label id="menuGroup" class="menugroup" hidden>Group <select id="groupSelect"></select></label>
       </nav>
     </div>
   </header>
@@ -538,6 +557,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     <h2>Sign in to your shared verses</h2>
     <p id="gateMsg">Loading…</p>
     <button id="btnSignIn" type="button" class="primary" data-icon="login" hidden>Sign in with Google</button>
+    <button id="btnGateSignOut" type="button" data-icon="logout" hidden>Sign out</button>
     <div id="gateErr" class="err"></div>
   </section>
 
@@ -588,6 +608,13 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       <h2 data-icon="user">Account</h2>
       <p id="accountText" class="hint">Your verses and learning progress are stored in this browser only.</p>
       <div class="row"><button id="btnSignOut" type="button" data-icon="logout" hidden>Sign out</button></div>
+    </section>
+
+    <section id="adminPanel" class="panel" hidden>
+      <h2 data-icon="users">People &amp; groups</h2>
+      <div id="admin" class="admin"></div>
+      <div id="adminErr" class="err"></div>
+      <span id="adminMsg" class="toast" aria-live="polite"></span>
     </section>
 
     <section class="panel">
@@ -675,12 +702,13 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.25 (17 Oct 2026)';
+  const APP_VERSION = '1.26 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
   // Line icons (24×24, drawn with the current text colour). icon(name) returns an <svg class="ic">.
   const ICONS = {
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
     home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v12h14V9"/><path d="M10 21v-6h4v6"/>',
     cards: '<rect x="3" y="7" width="13" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/>',
     book: '<path d="M2 5h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/>',
@@ -920,6 +948,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
   const cloud = !!FIREBASE_CONFIG.apiKey;
   let db = null, fs = null; // Firestore instance and module, once signed in
+  // Where the shared data lives: at the top of the database before the move into groups, else groups/{id}/….
+  let base = [];
+  const gpath = (...p) => [...base, ...p];
   let synced = new Map(); // verse id -> JSON of the version last seen in Firestore
 
   function load() {
@@ -944,11 +975,11 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       seen.add(id);
       if (synced.get(id) === json) return;
       synced.set(id, json);
-      fs.setDoc(fs.doc(db, 'verses', id), data).catch(showSyncError);
+      fs.setDoc(fs.doc(db, ...gpath('verses', id)), data).catch(showSyncError);
     });
     [...synced.keys()].filter(id => !seen.has(id)).forEach(id => {
       synced.delete(id);
-      fs.deleteDoc(fs.doc(db, 'verses', id)).catch(showSyncError);
+      fs.deleteDoc(fs.doc(db, ...gpath('verses', id))).catch(showSyncError);
     });
   }
   function showSyncError(err) {
@@ -1714,7 +1745,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (!cloud) { try { localStorage.setItem(SETS_KEY, JSON.stringify(sets)); } catch (e) {} return; }
     if (!db) return;
     const { id, ...data } = set;
-    (removed ? fs.deleteDoc(fs.doc(db, 'sets', id)) : fs.setDoc(fs.doc(db, 'sets', id), data)).catch(showSetsError);
+    (removed ? fs.deleteDoc(fs.doc(db, ...gpath('sets', id))) : fs.setDoc(fs.doc(db, ...gpath('sets', id)), data)).catch(showSetsError);
   }
   function showSetsError(err) {
     $('syncErr').textContent = err && err.code === 'permission-denied'
@@ -2724,7 +2755,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     translationList = list;
     $('trErr').textContent = '';
     if (!cloud) { try { localStorage.setItem(TR_KEY, JSON.stringify(list)); } catch (e) {} }
-    else if (db) fs.setDoc(fs.doc(db, 'config', 'translations'), { items: list, updatedAt: new Date().toISOString() }).catch(showTranslationsError);
+    else if (db) fs.setDoc(fs.doc(db, ...gpath('config', 'translations')), { items: list, updatedAt: new Date().toISOString() }).catch(showTranslationsError);
     renderAll(); refreshBlocks();
   }
   function showTranslationsError(err) {
@@ -2959,10 +2990,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
   async function startCloud() {
     showApp(false);
-    const base = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
+    const base_ = `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/`;
     let appMod, authMod;
     try {
-      [appMod, authMod, fs] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => import(base + f)));
+      [appMod, authMod, fs] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => import(base_ + f)));
     } catch (e) {
       $('gateMsg').textContent = 'Could not load Firebase. Check your internet connection and reload the page.';
       return;
@@ -2973,8 +3004,284 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     let store;
     try { store = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
     catch (e) { store = fs.getFirestore(app); }
-    let unsubscribe = null, unsubscribeProgress = null, unsubscribeSets = null, unsubscribeTranslations = null;
+    let unsubscribeProgress = null, unsubscribeMeta = null, unsubscribePerson = null, adminUnsubs = [], dataUnsubs = [];
     let deniedEmail = null;
+    let user = null;
+
+    // ----- groups -----
+    // Before the admin moves the old data into a group (`meta/migration` missing), everyone uses the top-level
+    // collections as before. Afterwards each person's document `people/{email}` says which groups they are in,
+    // and the app shows the verses, sets and translations of one group at a time.
+    const GROUP_KEY = 'verseBoard.group.v1';
+    let migrated = null; // null until known
+    let person = null; // this person's document, after the move
+    let myGroups = []; // [{ id, name }]
+    let groupId = null, dataKey = null, groupsToken = 0;
+
+    function stopData() { dataUnsubs.forEach(u => u()); dataUnsubs = []; dataKey = null; }
+    function resetData() {
+      translationList = DEFAULT_TRANSLATIONS.map(t => ({ ...t }));
+      sets = []; setName = '';
+      if (editingId) stopEdit();
+      db = null; synced = new Map(); verses = [];
+      session = null; picked = null;
+      $('syncErr').hidden = true;
+    }
+    function gate(msg) {
+      stopData(); resetData();
+      showApp(false);
+      $('gateMsg').textContent = msg;
+      $('btnSignIn').hidden = true;
+      $('btnGateSignOut').hidden = false;
+      renderAll();
+    }
+    // Listens to the verses, sets and translations under `path` (an array of path segments; [] = the old top level).
+    function useData(path) {
+      const key = path.join('/') || '/';
+      if (key === dataKey) return;
+      stopData(); resetData();
+      dataKey = key; base = path;
+      const legacy = !path.length;
+      if (!appOn) $('gateMsg').textContent = 'Loading verses…';
+      renderAccount();
+      dataUnsubs.push(fs.onSnapshot(fs.collection(store, ...gpath('verses')), snap => {
+        db = store;
+        const list = snap.docs.map(d => normalizeVerse({ ...d.data(), id: d.id })).filter(Boolean);
+        list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        synced = new Map(list.map(({ id, ...data }) => [id, JSON.stringify(data)]));
+        verses = list;
+        if (editingId && !verses.some(v => v.id === editingId)) stopEdit();
+        showApp(true);
+        renderAll(); renderAdmin();
+      }, err => {
+        if (legacy && err.code === 'permission-denied') { deniedEmail = user && user.email; authMod.signOut(auth); return; }
+        showSyncError(err);
+      }));
+      dataUnsubs.push(fs.onSnapshot(fs.collection(store, ...gpath('sets')), snap => {
+        sets = sortSets(snap.docs.map(d => normalizeSet({ ...d.data(), id: d.id })).filter(Boolean));
+        if (!session) renderLearn();
+        renderHome();
+      }, showSetsError));
+      // Until someone changes them in the settings, the default translations are used.
+      dataUnsubs.push(fs.onSnapshot(fs.doc(store, ...gpath('config', 'translations')), snap => {
+        translationList = (snap.exists() && normalizeTranslations(snap.data().items)) || DEFAULT_TRANSLATIONS.map(t => ({ ...t }));
+        renderAll(); refreshBlocks();
+      }, showTranslationsError));
+    }
+    function route() {
+      if (migrated == null || !user) return;
+      if (!migrated) {
+        if (unsubscribePerson) { unsubscribePerson(); unsubscribePerson = null; }
+        useData([]);
+        return;
+      }
+      if (unsubscribePerson) return;
+      let touched = false;
+      unsubscribePerson = fs.onSnapshot(fs.doc(store, 'people', accountEmail), snap => {
+        person = snap.exists() ? snap.data() : null;
+        const today = new Date().toISOString().slice(0, 10);
+        if (person && person.active && !touched && person.lastSeen !== today) {
+          touched = true;
+          fs.updateDoc(fs.doc(store, 'people', accountEmail), { lastSeen: today }).catch(() => {});
+        }
+        loadMyGroups();
+      }, err => gate('Could not check your access: ' + (err && err.message || err)));
+    }
+    async function loadMyGroups() {
+      const token = ++groupsToken;
+      if (!person || !person.active) {
+        myGroups = []; renderGroupPick();
+        gate(`${user.email} has not been added to Word Memo yet. Ask the person who manages the app to add you, then reload this page.`);
+        return;
+      }
+      const ids = Array.isArray(person.groupIds) ? person.groupIds : [];
+      if (!ids.length) {
+        myGroups = []; renderGroupPick();
+        gate('You are not in a group yet. Ask the person who manages the app to add you to one, then reload this page.');
+        return;
+      }
+      const list = await Promise.all(ids.map(id => fs.getDoc(fs.doc(store, 'groups', id))
+        .then(d => ({ id, name: (d.exists() && d.data().name) || 'Group' }), () => ({ id, name: 'Group' }))));
+      if (token !== groupsToken) return;
+      myGroups = list.sort((a, b) => a.name.localeCompare(b.name));
+      let stored = null;
+      try { stored = localStorage.getItem(GROUP_KEY); } catch (e) {}
+      if (!myGroups.some(g => g.id === groupId)) groupId = (myGroups.find(g => g.id === stored) || myGroups[0]).id;
+      renderGroupPick();
+      $('btnGateSignOut').hidden = true;
+      useData(['groups', groupId]);
+      renderAccount();
+    }
+    function renderGroupPick() {
+      $('menuGroup').hidden = myGroups.length < 2;
+      $('groupSelect').replaceChildren(...myGroups.map(g => el('option', { value: g.id, ...(g.id === groupId ? { selected: '' } : {}) }, g.name)));
+    }
+    $('groupSelect').addEventListener('change', e => {
+      groupId = e.target.value;
+      try { localStorage.setItem(GROUP_KEY, groupId); } catch (err) {}
+      useData(['groups', groupId]);
+      setView('home');
+    });
+    function renderAccount() {
+      if (!user) return;
+      const g = migrated && myGroups.find(x => x.id === groupId);
+      $('accountText').textContent = g
+        ? `Signed in as ${user.email}. You are in the group "${g.name}": its verses and learning sets are shared within the group; your learning progress is your own.`
+        : `Signed in as ${user.email || user.displayName || 'you'}. Verses and learning sets are shared; your learning progress is your own.`;
+    }
+
+    // ----- People & groups (admin only) -----
+    // Only the admin account named in the Firestore rules may read the `people` collection, so the panel shows
+    // exactly when that read succeeds.
+    let isAdmin = false, people = [], allGroups = [];
+    const moveDraft = { group: 'Family', name: '', email: '', otherName: '' };
+    const draft = { email: '', name: '', groupIds: [] };
+    let newGroupName = '', moving = false;
+    const appLink = () => location.origin + location.pathname;
+    function adminDone(msg) { $('adminErr').textContent = ''; $('adminMsg').textContent = msg || ''; }
+    function adminFail(err) { $('adminMsg').textContent = ''; $('adminErr').textContent = 'Could not save: ' + (err && err.message || err); }
+    const personDoc = (email) => fs.doc(store, 'people', email);
+    const groupName = (id) => (allGroups.find(g => g.id === id) || {}).name || 'Unknown group';
+    function textField(label, value, onInput, attrs) {
+      const id = 'adm' + label.replace(/\W/g, '');
+      return el('div', { class: 'field' }, el('label', { for: id }, label),
+        el('input', { id, type: 'text', value, autocomplete: 'off', oninput: e => onInput(e.target.value), ...(attrs || {}) }));
+    }
+    function renderAdmin() {
+      $('adminPanel').hidden = !isAdmin;
+      if (!isAdmin) return;
+      const box = $('admin');
+      if (migrated == null) { box.replaceChildren(el('p', { class: 'hint' }, 'Loading…')); return; }
+      if (!migrated) { box.replaceChildren(...moveSection()); return; }
+      const sorted = [...people].sort((a, b) => (b.active === true) - (a.active === true) || (a.name || a.id).localeCompare(b.name || b.id));
+      box.replaceChildren(
+        el('p', { class: 'hint' }, 'Only you see this panel. People you add sign in with that Google address at ', el('a', { href: appLink() }, appLink()),
+          ' and see the verses and learning sets of their groups. Everyone\'s learning progress stays their own.'),
+        el('h3', null, 'People'),
+        el('div', { class: 'adminlist' }, sorted.map(personRow)),
+        el('h3', null, 'Add a person'),
+        addPersonForm(),
+        el('h3', null, 'Groups'),
+        el('div', { class: 'adminlist' }, allGroups.map(groupRow)),
+        el('div', { class: 'row' },
+          el('input', { type: 'text', value: newGroupName, placeholder: 'New group name', 'aria-label': 'New group name', autocomplete: 'off', oninput: e => { newGroupName = e.target.value; } }),
+          el('button', { type: 'button', onclick: createGroup }, icon('plus'), 'Create group')));
+    }
+    function groupChips(selected, onToggle) {
+      if (!allGroups.length) return el('span', { class: 'hint' }, 'No groups yet. Create one below.');
+      return el('div', { class: 'suggestions' }, allGroups.map(g => {
+        const on = selected.includes(g.id);
+        return el('button', { type: 'button', class: 'chip ' + (on ? 'on' : 'suggest'), 'aria-pressed': String(on), onclick: () => onToggle(g.id, !on) }, g.name);
+      }));
+    }
+    function personRow(p) {
+      const ids = Array.isArray(p.groupIds) ? p.groupIds : [];
+      const self = p.id === accountEmail;
+      return el('div', { class: 'personrow' + (p.active ? '' : ' off') },
+        el('div', { class: 'who' },
+          el('input', { type: 'text', value: p.name || '', placeholder: 'Name', 'aria-label': 'Name of ' + p.id, onchange: e => {
+            const name = norm(e.target.value);
+            if (name && name !== p.name) fs.updateDoc(personDoc(p.id), { name }).then(() => adminDone(`Renamed to ${name}.`), adminFail);
+          } }),
+          el('span', { class: 'email' }, p.id),
+          el('span', { class: 'seen' }, !p.active ? 'No access' : p.lastSeen ? 'Last seen ' + p.lastSeen : 'Not signed in yet')),
+        groupChips(ids, (gid, on) => fs.updateDoc(personDoc(p.id), { groupIds: on ? fs.arrayUnion(gid) : fs.arrayRemove(gid) })
+          .then(() => adminDone(`${p.name || p.id} ${on ? 'added to' : 'removed from'} ${groupName(gid)}.`), adminFail)),
+        self ? null : el('div', { class: 'row' }, el('button', { type: 'button', class: 'link' + (p.active ? ' danger' : ''), onclick: () =>
+          fs.updateDoc(personDoc(p.id), { active: !p.active })
+            .then(() => adminDone(p.active ? `${p.name || p.id} no longer has access. Their learning progress is kept.` : `${p.name || p.id} has access again.`), adminFail)
+        }, p.active ? 'Remove access' : 'Give access back')));
+    }
+    function addPersonForm() {
+      return el('div', { class: 'addperson' },
+        textField('Google address', draft.email, v => { draft.email = v; }, { type: 'email', placeholder: 'name@gmail.com' }),
+        textField('Name', draft.name, v => { draft.name = v; }, { placeholder: 'How they are shown' }),
+        groupChips(draft.groupIds, (gid, on) => { draft.groupIds = on ? [...draft.groupIds, gid] : draft.groupIds.filter(x => x !== gid); renderAdmin(); }),
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', onclick: addPerson }, icon('plus'), 'Add person')));
+    }
+    function addPerson() {
+      const email = norm(draft.email).toLowerCase(), name = norm(draft.name);
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('adminErr').textContent = 'Type their Google address, for example name@gmail.com.'; return; }
+      if (people.some(p => p.id === email)) { $('adminErr').textContent = `${email} is already in the list.`; return; }
+      if (!name) { $('adminErr').textContent = 'Type a name for them.'; return; }
+      const groupIds = draft.groupIds.filter(id => allGroups.some(g => g.id === id));
+      fs.setDoc(personDoc(email), { name, groupIds, active: true, addedAt: new Date().toISOString() }).then(() => {
+        draft.email = ''; draft.name = ''; draft.groupIds = [];
+        adminDone(`Added ${name}. ${groupIds.length ? '' : 'Put them in a group so they can see verses. '}Send them the link ${appLink()} and ask them to sign in with ${email}.`);
+        renderAdmin();
+      }, adminFail);
+    }
+    function groupRow(g) {
+      const members = people.filter(p => p.active && (p.groupIds || []).includes(g.id));
+      return el('div', { class: 'grouprow' },
+        el('input', { type: 'text', value: g.name, 'aria-label': 'Name of the group ' + g.name, onchange: e => {
+          const name = norm(e.target.value);
+          if (name && name !== g.name) fs.updateDoc(fs.doc(store, 'groups', g.id), { name }).then(() => adminDone(`Renamed the group to ${name}.`), adminFail);
+        } }),
+        el('span', { class: 'count' }, members.length ? members.map(p => p.name || p.id).join(', ') : 'No members'));
+    }
+    function createGroup() {
+      const name = norm(newGroupName);
+      if (!name) { $('adminErr').textContent = 'Type a name for the new group.'; return; }
+      if (allGroups.some(g => g.name.toLowerCase() === name.toLowerCase())) { $('adminErr').textContent = `There is already a group called ${name}.`; return; }
+      fs.setDoc(fs.doc(store, 'groups', uid()), { name, createdAt: new Date().toISOString() }).then(() => {
+        newGroupName = '';
+        adminDone(`Created the group ${name}. Tick it on a person to add them.`);
+        renderAdmin();
+      }, adminFail);
+    }
+    function moveSection() {
+      return [
+        el('p', { class: 'hint' }, 'Before you can add more people, move the verses, learning sets and translations you share today into a first group. They are copied, and everyone\'s learning progress stays as it is. Export a backup below first, just in case.'),
+        textField('Name of the first group', moveDraft.group, v => { moveDraft.group = v; }),
+        textField('Your name', moveDraft.name, v => { moveDraft.name = v; }),
+        el('div', { class: 'addperson' },
+          textField('Google address of the other person (optional)', moveDraft.email, v => { moveDraft.email = v; }, { type: 'email' }),
+          textField('Their name', moveDraft.otherName, v => { moveDraft.otherName = v; })),
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', ...(db && !moving ? {} : { disabled: '' }), onclick: migrate }, icon('users'), moving ? 'Moving…' : 'Move existing data'))
+      ];
+    }
+    async function migrate() {
+      const group = norm(moveDraft.group), name = norm(moveDraft.name), email = norm(moveDraft.email).toLowerCase(), otherName = norm(moveDraft.otherName);
+      if (!group || !name) { $('adminErr').textContent = 'Type a group name and your name.'; return; }
+      if (email && (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !otherName)) { $('adminErr').textContent = 'Check the other person\'s Google address and type their name.'; return; }
+      if (!db || moving) return;
+      moving = true; adminDone(''); renderAdmin();
+      try {
+        const gid = uid(), now = new Date().toISOString();
+        const writes = [[['groups', gid], { name: group, createdAt: now }],
+          [['people', accountEmail], { name, groupIds: [gid], active: true, addedAt: now }],
+          ...(email && email !== accountEmail ? [[['people', email], { name: otherName, groupIds: [gid], active: true, addedAt: now }]] : []),
+          ...verses.map(({ id, ...data }) => [['groups', gid, 'verses', id], data]),
+          ...sets.map(({ id, ...data }) => [['groups', gid, 'sets', id], data]),
+          [['groups', gid, 'config', 'translations'], { items: translationList, updatedAt: now }]];
+        for (let i = 0; i < writes.length; i += 400) {
+          const batch = fs.writeBatch(store);
+          writes.slice(i, i + 400).forEach(([path, data]) => batch.set(fs.doc(store, ...path), data));
+          await batch.commit();
+        }
+        const [vs, ss] = await Promise.all(['verses', 'sets'].map(c => fs.getDocsFromServer(fs.collection(store, 'groups', gid, c))));
+        if (vs.size !== verses.length || ss.size !== sets.length) throw new Error(`the copy has ${vs.size} of ${verses.length} verses and ${ss.size} of ${sets.length} sets. Nothing was switched over; try again.`);
+        await fs.setDoc(fs.doc(store, 'meta', 'migration'), { at: now, groupId: gid, by: accountEmail, verses: vs.size, sets: ss.size });
+        try { localStorage.setItem(GROUP_KEY, gid); } catch (e) {}
+        adminDone(`Moved ${vs.size} verse${vs.size === 1 ? '' : 's'} and ${ss.size} learning set${ss.size === 1 ? '' : 's'} into the group ${group}.`);
+      } catch (err) {
+        $('adminErr').textContent = 'The move did not finish: ' + (err && err.message || err);
+      }
+      moving = false; renderAdmin();
+    }
+    function watchAdmin() {
+      const stop = () => { isAdmin = false; people = []; allGroups = []; adminUnsubs.forEach(u => u()); adminUnsubs = []; renderAdmin(); };
+      adminUnsubs.push(fs.onSnapshot(fs.collection(store, 'people'), snap => {
+        isAdmin = true;
+        people = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        renderAdmin();
+      }, stop));
+      adminUnsubs.push(fs.onSnapshot(fs.collection(store, 'groups'), snap => {
+        allGroups = snap.docs.map(d => ({ id: d.id, name: d.data().name || 'Group' })).sort((a, b) => a.name.localeCompare(b.name));
+        renderAdmin();
+      }, () => {}));
+    }
 
     $('btnSignIn').addEventListener('click', () => {
       $('gateErr').textContent = '';
@@ -2985,20 +3292,20 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       });
     });
     $('btnSignOut').addEventListener('click', () => authMod.signOut(auth));
+    $('btnGateSignOut').addEventListener('click', () => authMod.signOut(auth));
     authMod.getRedirectResult(auth).catch(err => { $('gateErr').textContent = 'Sign-in failed: ' + err.message; });
 
-    authMod.onAuthStateChanged(auth, user => {
-      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
-      if (unsubscribeProgress) { unsubscribeProgress(); unsubscribeProgress = null; }
-      if (unsubscribeSets) { unsubscribeSets(); unsubscribeSets = null; }
-      if (unsubscribeTranslations) { unsubscribeTranslations(); unsubscribeTranslations = null; }
-      translationList = DEFAULT_TRANSLATIONS.map(t => ({ ...t }));
-      sets = []; setName = '';
-      if (editingId) stopEdit();
-      db = null; synced = new Map(); verses = [];
-      progressRef = null; progress = normalizeProgress(null); session = null; picked = null; view = 'home';
-      $('syncErr').hidden = true;
-      if (!user) {
+    authMod.onAuthStateChanged(auth, u => {
+      user = u;
+      stopData();
+      [unsubscribeProgress, unsubscribeMeta, unsubscribePerson, ...adminUnsubs].forEach(f => f && f());
+      unsubscribeProgress = unsubscribeMeta = unsubscribePerson = null; adminUnsubs = [];
+      isAdmin = false; people = []; allGroups = []; migrated = null; person = null; myGroups = []; groupId = null; base = [];
+      resetData(); renderGroupPick(); renderAdmin();
+      progressRef = null; progress = normalizeProgress(null); view = 'home';
+      $('btnGateSignOut').hidden = true;
+      if (!u) {
+        accountEmail = '';
         showApp(false);
         $('btnSignOut').hidden = true;
         $('gateMsg').textContent = deniedEmail
@@ -3009,35 +3316,17 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         renderAll();
         return;
       }
-      accountEmail = user.email || '';
-      $('accountText').textContent = `Signed in as ${user.email || user.displayName || 'you'}. Verses and learning sets are shared; your learning progress is your own.`;
+      accountEmail = (u.email || '').toLowerCase();
+      renderAccount();
       $('btnSignOut').hidden = false;
       $('gateMsg').textContent = 'Loading verses…';
       $('btnSignIn').hidden = true;
-      unsubscribe = fs.onSnapshot(fs.collection(store, 'verses'), snap => {
-        db = store;
-        const list = snap.docs.map(d => normalizeVerse({ ...d.data(), id: d.id })).filter(Boolean);
-        list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-        synced = new Map(list.map(({ id, ...data }) => [id, JSON.stringify(data)]));
-        verses = list;
-        if (editingId && !verses.some(v => v.id === editingId)) stopEdit();
-        showApp(true);
-        renderAll();
-      }, err => {
-        if (err.code === 'permission-denied') { deniedEmail = user.email; authMod.signOut(auth); return; }
-        showSyncError(err);
-      });
-      unsubscribeSets = fs.onSnapshot(fs.collection(store, 'sets'), snap => {
-        sets = sortSets(snap.docs.map(d => normalizeSet({ ...d.data(), id: d.id })).filter(Boolean));
-        if (!session) renderLearn();
-        renderHome();
-      }, showSetsError);
-      // Until someone changes them in the settings, the default translations are used.
-      unsubscribeTranslations = fs.onSnapshot(fs.doc(store, 'config', 'translations'), snap => {
-        translationList = (snap.exists() && normalizeTranslations(snap.data().items)) || DEFAULT_TRANSLATIONS.map(t => ({ ...t }));
-        renderAll(); refreshBlocks();
-      }, showTranslationsError);
-      const progressDoc = fs.doc(store, 'progress', user.uid);
+      watchAdmin();
+      // Rules from before groups don't let anyone read `meta`; that means the data has not been moved yet.
+      unsubscribeMeta = fs.onSnapshot(fs.doc(store, 'meta', 'migration'), snap => {
+        migrated = snap.exists(); route(); renderAdmin();
+      }, () => { migrated = false; route(); renderAdmin(); });
+      const progressDoc = fs.doc(store, 'progress', u.uid);
       unsubscribeProgress = fs.onSnapshot(progressDoc, snap => {
         progressRef = progressDoc;
         progress = normalizeProgress(snap.exists() ? snap.data() : null);
