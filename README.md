@@ -17,11 +17,11 @@ Open `index.html` in a browser.
 - Star a favourite translation per verse (on the board card or in the form). It is shown first on the board and used for learning; during a session you can switch to another translation of the same verse with one tap.
 - Tag verses with free-text tags. Earlier tags are suggested, and you can filter the board by tag.
 - Highlight key words by selecting them, either on the board or in the form.
-- Edit or delete verses.
-- Export all verses to JSON and import them again. Older single-translation exports still import.
+- Edit or delete verses. A deleted verse can be brought back with Undo for 10 seconds.
+- Export verses, learning sets, translations and your own learning progress to JSON, and import them again. Older exports, including single-translation ones, still import.
 - Learn in sessions: pick verses one by one, by tag, or all that are due. Choose a way of learning (flip cards, which verse?, first letters, fading words), turn each card around when ready and rate how well you knew it: Not yet, Shaky, Got it or Perfect. Or play "Match up": tap each verse and then its passage, in rounds of up to five; a first-try match counts as Got it, one miss as Shaky, more as Not yet. "Word order" (tap the pieces of the verse in order; they get smaller as you improve) rates each verse by its slips: none is Got it, one or two Shaky, more Not yet. "Build it up" is for new verses: one phrase at a time with earlier phrases as first letters, then the whole verse, then you rate it. "Lightning round" asks quick "which passage?" and "which word is missing?" questions for one minute and keeps your best score. Nothing needs typing.
 - Save a selection of verses as a named learning set to focus on over several days. Sets are shared, and each set shows how many of its verses you have learned and how many are due. Saving under an existing name updates that set.
-- Each rating moves the verse to a level (0 to 6, shown as dots) and schedules when it is due again, from the same day up to a month later. Sessions give points, runs of known verses earn a bonus, and the app counts the days in a row you practised.
+- Each rating moves the verse to a level (0 to 6, shown as dots) and schedules when it is due again, from the same day up to a month later. A verse can rise at most 2 levels a day, and the quick ways (Which verse?, Match up, Lightning round) only raise it up to level 2. Sessions give points, runs of known verses earn a bonus, and the app counts the days in a row you practised.
 
 - Share one collection of verses with other people: everyone signs in with Google and sees and edits the same verses, live. It also works offline and syncs later.
 
