@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Verse Board</title>
+<title>Word Memo</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -474,7 +474,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 <div class="wrap">
   <header>
     <button id="btnHome" type="button" class="brand" title="Home">
-      <span class="h1">Verse Board</span>
+      <span class="h1">Word Memo</span>
       <span class="sub">Collect the passages you are memorising.</span>
     </button>
     <div class="menuwrap">
@@ -602,7 +602,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
     <section class="panel">
       <h2 data-icon="upload">Import</h2>
-      <p class="hint">Pick a file exported from Verse Board, or paste its JSON. Verses you already have are kept; duplicates are skipped.</p>
+      <p class="hint">Pick a file exported from Word Memo, or paste its JSON. Verses you already have are kept; duplicates are skipped.</p>
       <input id="importFile" type="file" accept=".json,application/json">
       <textarea id="importText" placeholder='{"verses": [ ... ]}'></textarea>
       <div class="row">
@@ -615,7 +615,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
   <dialog id="tutorial" class="tut" aria-labelledby="tutTitle"></dialog>
 
-  <footer class="appfoot">Verse Board · version <span id="appVersion"></span></footer>
+  <footer class="appfoot">Word Memo · version <span id="appVersion"></span></footer>
 </div>
 
 <script>
@@ -632,7 +632,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.17 (17 Oct 2026)';
+  const APP_VERSION = '1.18 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -2725,7 +2725,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
   // ---------- export ----------
   function exportJson() {
-    return JSON.stringify({ app: 'verse-board', version: 2, exportedAt: new Date().toISOString(), verses }, null, 2);
+    return JSON.stringify({ app: 'word-memo', version: 2, exportedAt: new Date().toISOString(), verses }, null, 2);
   }
   $('btnExport').addEventListener('click', () => {
     const json = exportJson();
@@ -2733,7 +2733,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     $('copyMsg').textContent = '';
     $('exportSheet').hidden = false;
     try {
-      const a = el('a', { href: URL.createObjectURL(new Blob([json], { type: 'application/json' })), download: `verses-${new Date().toISOString().slice(0, 10)}.json` });
+      const a = el('a', { href: URL.createObjectURL(new Blob([json], { type: 'application/json' })), download: `word-memo-${new Date().toISOString().slice(0, 10)}.json` });
       document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     } catch (e) {}
