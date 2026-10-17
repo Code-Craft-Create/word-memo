@@ -10,5 +10,9 @@ service cloud.firestore {
     match /verses/{verseId} {
       allow read, write: if allowed();
     }
+    // Each person's learning progress is theirs alone.
+    match /progress/{userId} {
+      allow read, write: if allowed() && request.auth.uid == userId;
+    }
   }
 }
