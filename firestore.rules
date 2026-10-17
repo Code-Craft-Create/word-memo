@@ -1,26 +1,72 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only these Google accounts can see and edit the shared verses. Use lowercase addresses.
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+    function me() {
+      return request.auth.token.email.lower();
+    }
+    // The one account that manages people and groups in the app. Use your main Google address, in lowercase.
+    function isAdmin() {
+      return signedIn() && me() == 'admin.person@gmail.com';
+    }
+    // The two accounts that shared everything before groups existed. Use lowercase addresses.
+    // They keep access to the old data until it has been moved into a group.
     function allowed() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email.lower() in ['first.person@gmail.com', 'second.person@gmail.com'];
+      return isAdmin() || (signedIn() && me() in ['first.person@gmail.com', 'second.person@gmail.com']);
     }
+    // Set once the admin has moved the old data into a group; from then on the old data is read-only.
+    function moved() {
+      return exists(/databases/$(database)/documents/meta/migration);
+    }
+    function personPath() {
+      return /databases/$(database)/documents/people/$(me());
+    }
+    function active() {
+      return signedIn() && exists(personPath()) && get(personPath()).data.active == true;
+    }
+    function inGroup(g) {
+      return active() && g in get(personPath()).data.groupIds;
+    }
+
+    match /meta/{docId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+    // One document per person, keyed by their lowercase email: name, groupIds, active, addedAt, lastSeen.
+    // Only the admin adds or changes people; a person may only update when they were last seen.
+    match /people/{email} {
+      allow read: if isAdmin() || (signedIn() && me() == email);
+      allow write: if isAdmin();
+      allow update: if signedIn() && me() == email
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen']);
+    }
+    // A group's name, and inside it what its members share: verses, learning sets and the translations list.
+    match /groups/{groupId} {
+      allow read: if isAdmin() || inGroup(groupId);
+      allow write: if isAdmin();
+    }
+    match /groups/{groupId}/{coll}/{docId} {
+      allow read, write: if coll in ['verses', 'sets', 'config'] && (isAdmin() || inGroup(groupId));
+    }
+
+    // Before groups: verses, sets and settings shared by the two accounts above.
     match /verses/{verseId} {
-      allow read, write: if allowed();
+      allow read: if allowed();
+      allow write: if allowed() && !moved();
     }
-    // Learning sets (named lists of verses) are shared like the verses.
     match /sets/{setId} {
-      allow read, write: if allowed();
+      allow read: if allowed();
+      allow write: if allowed() && !moved();
     }
-    // App settings shared by both people, such as the list of translations and their languages.
     match /config/{docId} {
-      allow read, write: if allowed();
+      allow read: if allowed();
+      allow write: if allowed() && !moved();
     }
     // Each person's learning progress is theirs alone.
     match /progress/{userId} {
-      allow read, write: if allowed() && request.auth.uid == userId;
+      allow read, write: if signedIn() && request.auth.uid == userId && (allowed() || active());
     }
   }
 }
