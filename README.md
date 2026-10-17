@@ -32,8 +32,6 @@ While `FIREBASE_CONFIG` at the top of the script in `index.html` is empty, verse
 
 Once it is filled in, the data is stored in Cloud Firestore. Each group's verses, learning sets and translations list live under `groups/{groupId}/verses`, `…/sets` and `…/config/translations`; the group's name is in `groups/{groupId}`. Each person is a document `people/{email}` (lowercase email: name, groupIds, active, addedAt, lastSeen) that only the admin can change.
 
-Before the admin moves the data into a group (Settings → People & groups → Move existing data), the app uses the older top-level collections `verses`, `sets` and `config`, shared by the two accounts listed in the rules. The move copies them into the first group and writes `meta/migration`; from then on the rules make the old collections read-only.
-
 Locally, the list of translations is kept under `verseBoard.translations.v1` and learning sets under `verseBoard.sets.v1`.
 
 Learning progress is personal. Locally it is kept in `localStorage` under `verseBoard.progress.v1`. In shared mode each person's progress is one document `progress/{uid}`, which only they can read or change. The group being shown is remembered per device under `verseBoard.group.v1`.
@@ -45,7 +43,7 @@ Everything below fits in Firebase's free Spark plan.
 1. **Create the Firebase project.** At [console.firebase.google.com](https://console.firebase.google.com), add a project (Google Analytics is not needed).
 2. **Turn on Google sign-in.** Go to Build → Authentication → Get started → Sign-in method → Google → Enable, then save.
 3. **Create the database.** Go to Build → Firestore Database → Create database. Pick a location near you and start in production mode.
-4. **Restrict access.** In Firestore → Rules, paste the contents of [`firestore.rules`](firestore.rules). Replace `admin.person@gmail.com` with the Google account that manages people (written in lowercase). If you used the app before groups existed, also replace the two example addresses in `allowed()` with the two accounts that shared it. Then publish.
+4. **Restrict access.** In Firestore → Rules, paste the contents of [`firestore.rules`](firestore.rules). Replace `admin.person@gmail.com` with the Google account that manages people (written in lowercase). Then publish.
 5. **Register the web app.** In Project settings → General → Your apps, add a Web app (`</>`); Firebase Hosting is not needed. Copy the `firebaseConfig` object it shows into `FIREBASE_CONFIG` in `index.html`. These values are not secret: access is controlled by the rules.
 6. **Host the page.** In this repo's Settings → Pages, set the source to "Deploy from a branch", with branch `main` and folder `/ (root)`. GitHub Pages is free for public repositories; private repositories need a paid GitHub plan. The page will be at `https://<github-user>.github.io/word-memo/`.
 7. **Allow the domain.** In Authentication → Settings → Authorized domains, add `<github-user>.github.io`.
@@ -55,7 +53,7 @@ To move verses you already have, open the old page and use **Export JSON**. Then
 ## Add people and groups
 
 1. Sign in with the admin account and open Settings → People & groups.
-2. If you used the app before groups existed, export a backup, then press **Move existing data** once. It copies your verses, sets and translations into a first group and adds you (and the other person, if you type their address) to it.
+2. The first time, create a group and add yourself under Add a person, with that group ticked. Until you are in a group, the app opens straight on this page.
 3. Create a group for the new people, or use an existing one.
 4. Under Add a person, type their Google address and name, tick their group(s) and press Add person.
 5. Send them the app link. They sign in with Google and see their group.
