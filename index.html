@@ -22,6 +22,7 @@
   --hl: #fff2a8;
   --hl-ink: #1d2233;
   --ok: #2b7a4b;
+  --warn: #9a5b00;
   --font-verse: "Literata", Georgia, "Times New Roman", serif;
   --font-ui: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 10px;
@@ -29,12 +30,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #12141c; --surface: #1b1e29; --ink: #e6e8f0; --muted: #9aa0b4; --line: #2d3142;
-    --accent: #9aa8ec; --accent-soft: #262c4a; --danger: #f08a82; --ok: #7cc79a; --hl: #e8d98e; --hl-ink: #161821; color-scheme: dark;
+    --accent: #9aa8ec; --accent-soft: #262c4a; --danger: #f08a82; --ok: #7cc79a; --warn: #e3b26a; --hl: #e8d98e; --hl-ink: #161821; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #12141c; --surface: #1b1e29; --ink: #e6e8f0; --muted: #9aa0b4; --line: #2d3142;
-  --accent: #9aa8ec; --accent-soft: #262c4a; --danger: #f08a82; --ok: #7cc79a; --hl: #e8d98e; --hl-ink: #161821; color-scheme: dark;
+  --accent: #9aa8ec; --accent-soft: #262c4a; --danger: #f08a82; --ok: #7cc79a; --warn: #e3b26a; --hl: #e8d98e; --hl-ink: #161821; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -56,7 +57,7 @@ h1 { font-family: var(--font-verse); font-weight: 600; font-size: 1.9rem; margin
 @media (min-width: 821px) { .panel.sticky { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); } }
 .panel h2 { margin: 0; font-size: 1rem; font-weight: 600; }
 .field { display: flex; flex-direction: column; gap: 5px; }
-label { font-size: .78rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+label, .lab { font-size: .78rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 label .opt { text-transform: none; letter-spacing: 0; font-weight: 400; }
 input[type=text], input[type=search], textarea {
   font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; width: 100%;
@@ -127,6 +128,71 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 .account { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .85rem; }
 .gate { max-width: 460px; margin: 40px auto 0; text-align: center; align-items: center; }
 .gate p { margin: 0; color: var(--muted); }
+.lvl { display: inline-flex; gap: 3px; align-items: center; padding: 0 4px; }
+.lvl i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.lvl i.on { background: var(--accent); }
+
+/* Learning: a setup panel (pick verses, mode, options), then one card at a time that turns around, then a summary. */
+.learn { max-width: 760px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.learnhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.learn select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; max-width: 100%; }
+.picklist { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; max-height: 340px; overflow: auto; }
+.pick { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: .92rem; color: var(--ink); min-width: 0; }
+.pick + .pick { border-top: 1px solid var(--line); }
+.pick input, .check input { accent-color: var(--accent); width: 16px; height: 16px; flex: none; margin: 0; }
+.pick .ppass { font-family: var(--font-verse); font-weight: 600; white-space: nowrap; }
+.pick .ptext { flex: 1; min-width: 0; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick .due { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+@media (max-width: 520px) { .pick .ptext { display: none; } .pick .due { margin-left: auto; } }
+.check { display: inline-flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: .92rem; color: var(--ink); cursor: pointer; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+button.mode { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; }
+.mode strong { font-weight: 600; }
+.mode span { font-size: .8rem; color: var(--muted); }
+button.mode.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+button.primary:disabled { opacity: .5; cursor: default; filter: none; }
+.hud { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 14px; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.hud b { color: var(--ink); }
+.hud .gain { color: var(--ok); font-weight: 600; }
+.bar { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.bar > div { height: 100%; background: var(--accent); border-radius: inherit; transition: width .3s; }
+.flip { perspective: 1400px; cursor: pointer; border-radius: 14px; }
+.flip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.flip-inner { display: grid; transition: transform .45s ease; transform-style: preserve-3d; }
+.flip.turned .flip-inner { transform: rotateY(180deg); }
+.face { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 28px 22px; min-height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; text-align: center; min-width: 0; }
+.face.back { transform: rotateY(180deg); border-color: var(--accent); }
+.face .big { font-family: var(--font-verse); font-weight: 600; font-size: 1.7rem; text-wrap: balance; }
+.face .vtxt { font-family: var(--font-verse); font-size: 1.15rem; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 60ch; }
+.face .vtxt.soft { color: var(--muted); font-size: 1rem; }
+.face .vtxt.letters { letter-spacing: .04em; }
+.face .vtxt mark { background: var(--hl); color: var(--hl-ink); border-radius: 3px; padding: 0 1px; }
+.face .kicker { font-size: .75rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.face .tap { font-size: .82rem; color: var(--muted); }
+.gap { color: transparent; border-bottom: 2px solid var(--muted); user-select: none; }
+.gapword { background: var(--accent-soft); color: var(--accent); border-radius: 3px; padding: 0 1px; }
+.learnctl { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.learnctl > .primary { padding: 12px; font-size: 1rem; }
+.rate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 520px) { .rate { grid-template-columns: repeat(2, 1fr); } }
+.rate button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 10px 6px; font-weight: 600; }
+.rate button span { font-size: .75rem; font-weight: 400; color: var(--muted); }
+.rate .r0 { color: var(--danger); } .rate .r0:hover { border-color: var(--danger); }
+.rate .r1 { color: var(--warn); } .rate .r1:hover { border-color: var(--warn); }
+.rate .r2 { color: var(--accent); }
+.rate .r3 { color: var(--ok); } .rate .r3:hover { border-color: var(--ok); }
+.keys { font-size: .8rem; color: var(--muted); text-align: center; }
+@media (hover: none) { .keys { display: none; } }
+.score { font-family: var(--font-verse); font-size: 2.6rem; font-weight: 600; line-height: 1; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 520px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px; text-align: center; display: flex; flex-direction: column; }
+.stat b { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.stat span { font-size: .8rem; color: var(--muted); }
+.results { display: flex; flex-direction: column; }
+.results > div { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: .92rem; }
+.results .ppass { font-family: var(--font-verse); font-weight: 600; flex: 1; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .flip-inner, .bar > div { transition: none; } }
 @media (prefers-reduced-motion: no-preference) { .card { animation: in .25s ease-out; } @keyframes in { from { transform: translateY(4px); opacity: .6; } } }
 </style>
 </head>
@@ -145,6 +211,7 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
     </div>
     <div class="toolbar">
       <span id="account" class="account" hidden><span id="whoami"></span><button id="btnSignOut" type="button" class="link">Sign out</button></span>
+      <button id="btnLearn" type="button" class="primary">Learn</button>
       <button id="btnExport" type="button">Export JSON</button>
       <button id="btnImport" type="button">Import JSON</button>
     </div>
@@ -213,6 +280,8 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
       <div id="board" class="board"></div>
     </section>
   </div>
+
+  <section id="learn" class="learn" hidden></section>
 </div>
 
 <script>
@@ -579,6 +648,7 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
         el('div', { class: 'foot' },
           el('div', { class: 'tags' }, (v.tags || []).map(t => el('button', { type: 'button', class: 'chip', title: 'Show only ' + t, onclick: () => { activeTag = t; renderBoard(); renderFilters(); } }, t))),
           el('div', { class: 'actions' },
+            levelDots(v.id),
             el('button', { type: 'button', class: 'link', onclick: () => startEdit(v) }, 'Edit'),
             el('button', { type: 'button', class: 'link danger' + (armed ? ' armed' : ''), onclick: () => {
               if (armed) { if (editingId === v.id) stopEdit(); verses = verses.filter(x => x.id !== v.id); pendingDelete = null; save(); renderAll(); }
@@ -697,7 +767,338 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
   $('hlRemove').addEventListener('click', () => applyHighlight(false));
   window.addEventListener('resize', hidePop);
 
-  function renderAll() { renderTranslationList(); renderDraftTags(); renderFilters(); renderBoard(); }
+  // ---------- learning progress ----------
+  // Each person keeps their own progress: a box per verse (0 = new or forgotten, MAX_BOX = well known) and the day
+  // it is due again. Stored in this browser, or in shared mode in Firestore at progress/{uid}, readable only by its owner.
+  const PROGRESS_KEY = 'verseBoard.progress.v1';
+  const MAX_BOX = 6;
+  const INTERVALS = [0, 1, 2, 4, 8, 16, 32]; // days until a verse is due again, by box
+  const dayStr = (d) => { const x = d || new Date(); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+  const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return dayStr(d); };
+  function normalizeProgress(raw) {
+    const out = { verses: {}, days: [] };
+    if (!raw || typeof raw !== 'object') return out;
+    if (raw.verses && typeof raw.verses === 'object') for (const id in raw.verses) {
+      const p = raw.verses[id] || {};
+      out.verses[id] = { box: Math.min(MAX_BOX, Math.max(0, Math.floor(+p.box) || 0)), due: typeof p.due === 'string' ? p.due : dayStr(), seen: Math.max(0, Math.floor(+p.seen) || 0), ...(p.last ? { last: String(p.last) } : {}) };
+    }
+    if (Array.isArray(raw.days)) out.days = [...new Set(raw.days.filter(d => typeof d === 'string'))].sort().slice(-400);
+    return out;
+  }
+  function loadProgress() {
+    if (cloud) return normalizeProgress(null);
+    try { return normalizeProgress(JSON.parse(localStorage.getItem(PROGRESS_KEY))); } catch (e) { return normalizeProgress(null); }
+  }
+  let progress = loadProgress();
+  let progressRef = null; // the signed-in person's progress document, once Firestore has sent it
+  function saveProgress() {
+    if (!cloud) { try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress)); } catch (e) {} return; }
+    if (progressRef) fs.setDoc(progressRef, progress).catch(showProgressError);
+  }
+  function showProgressError(err) {
+    $('syncErr').textContent = err && err.code === 'permission-denied'
+      ? 'Your learning progress cannot be saved yet. Publish the updated Firestore rules (see README) in the Firebase console.'
+      : 'Could not save your learning progress: ' + (err && err.message || err);
+    $('syncErr').hidden = false;
+  }
+  const isDue = (id) => { const p = progress.verses[id]; return !p || p.due <= dayStr(); };
+  const boxOf = (id) => (progress.verses[id] || {}).box || 0;
+  function dueLabel(id) {
+    const p = progress.verses[id];
+    if (!p) return 'New';
+    if (p.due <= dayStr()) return 'Due now';
+    const days = Math.round((new Date(p.due + 'T00:00') - new Date(dayStr() + 'T00:00')) / 864e5);
+    return days === 1 ? 'Due tomorrow' : `Due in ${days} days`;
+  }
+  function levelDots(id) {
+    const b = boxOf(id), label = `Level ${b} of ${MAX_BOX} · ${dueLabel(id)}`;
+    return el('span', { class: 'lvl', title: label, role: 'img', 'aria-label': label },
+      Array.from({ length: MAX_BOX }, (_, i) => el('i', { class: i < b ? 'on' : '' })));
+  }
+  // Moves a verse up or down after its first rating in a session.
+  function schedule(id, r) {
+    const p = progress.verses[id] || { box: 0, seen: 0 };
+    let box = p.box;
+    if (r === 0) box = 0;
+    else if (r === 1) box = Math.max(1, box - 1);
+    else box = Math.min(MAX_BOX, box + (r === 3 ? 2 : 1));
+    progress.verses[id] = { box, due: addDays(INTERVALS[box]), seen: (p.seen || 0) + 1, last: new Date().toISOString() };
+  }
+  function dayStreak() {
+    const days = new Set(progress.days);
+    const d = new Date();
+    if (!days.has(dayStr(d))) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while (days.has(dayStr(d))) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+
+  // ---------- learning sessions ----------
+  const MODES = [
+    { id: 'flip', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' },
+    { id: 'reverse', name: 'Which verse?', desc: 'Read the text, name the reference, then turn the card.' },
+    { id: 'letters', name: 'First letters', desc: 'Only the first letter of each word is shown as a hint.' },
+    { id: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' }
+  ];
+  const RATINGS = [
+    { name: 'Not yet', desc: 'Show it again', points: 0 },
+    { name: 'Shaky', desc: 'Needed help', points: 5 },
+    { name: 'Got it', desc: 'Small slips', points: 10 },
+    { name: 'Perfect', desc: 'Word for word', points: 15 }
+  ];
+  const FADE = [0.3, 0.45, 0.6, 0.75, 0.9, 1, 1]; // share of words "Fading words" hides, by box
+  let view = 'board';
+  let appOn = !cloud; // false while the sign-in screen is shown
+  let picked = null; // ids of the verses chosen for the next session; null until the setup first opens
+  let learnMode = 'flip', learnTr = '', learnShuffle = true;
+  let session = null;
+
+  function applyView() {
+    document.querySelector('.main').hidden = !appOn || view !== 'board';
+    $('learn').hidden = !appOn || view !== 'learn';
+    $('btnLearn').hidden = !appOn;
+    $('btnLearn').textContent = view === 'learn' ? 'Back to board' : 'Learn';
+    $('btnExport').hidden = $('btnImport').hidden = !appOn;
+  }
+  function setView(v) {
+    view = v;
+    if (session && session.finished) session = null; // an unfinished session is resumed
+    hidePop();
+    applyView();
+    if (v === 'learn') renderLearn(); else renderBoard();
+    window.scrollTo({ top: 0 });
+  }
+  $('btnLearn').addEventListener('click', () => setView(view === 'learn' ? 'board' : 'learn'));
+
+  function renderLearn() {
+    if (view !== 'learn') return;
+    if (session) renderSession(); else renderSetup();
+  }
+  // The translation practised for a verse: the one picked in the setup when the verse has it, else its first.
+  function verseTr(v) {
+    const i = learnTr ? v.translations.findIndex(t => t.translation === learnTr) : -1;
+    return v.translations[Math.max(0, i)];
+  }
+  const shuffle = (list) => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  function renderSetup() {
+    const root = $('learn');
+    const prevScroll = (root.querySelector('.picklist') || {}).scrollTop || 0;
+    const focusId = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.pick;
+    if (!verses.length) {
+      root.replaceChildren(el('section', { class: 'panel' }, el('h2', null, 'Start a learning session'), el('div', { class: 'empty' }, 'Add some verses to the board first.')));
+      return;
+    }
+    const due = verses.filter(v => isDue(v.id));
+    if (!picked) picked = new Set((due.length ? due : verses).map(v => v.id));
+    picked = new Set([...picked].filter(id => verses.some(v => v.id === id)));
+    const setPicked = (list) => { picked = new Set(list.map(v => v.id)); renderSetup(); };
+    const streak = dayStreak();
+    const trs = allTranslations();
+    if (learnTr && !trs.includes(learnTr)) learnTr = '';
+    const trSelect = el('select', { id: 'learnTr', onchange: (e) => { learnTr = e.target.value; renderSetup(); } },
+      el('option', { value: '' }, 'First translation of each verse'), trs.map(t => el('option', { value: t }, t)));
+    trSelect.value = learnTr;
+    const shuffleBox = el('input', { type: 'checkbox', onchange: (e) => { learnShuffle = e.target.checked; } });
+    shuffleBox.checked = learnShuffle;
+    const n = picked.size;
+    root.replaceChildren(el('section', { class: 'panel' },
+      el('div', { class: 'learnhead' },
+        el('h2', null, 'Start a learning session'),
+        streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null),
+      el('div', { class: 'field' },
+        el('div', { class: 'lab' }, 'Verses'),
+        el('div', { class: 'filters' },
+          el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked(due) }, `Due now · ${due.length}`),
+          el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked(verses) }, `All · ${verses.length}`),
+          el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked([]) }, 'None'),
+          tagCounts().map(([t, c]) => {
+            const tagged = verses.filter(v => v.tags.includes(t));
+            const all = tagged.every(v => picked.has(v.id));
+            return el('button', { type: 'button', class: 'chip' + (all ? ' on' : ' suggest'), 'aria-pressed': String(all), title: (all ? 'Remove' : 'Add') + ' the verses tagged ' + t,
+              onclick: () => { tagged.forEach(v => all ? picked.delete(v.id) : picked.add(v.id)); renderSetup(); } }, `${t} · ${c}`);
+          })
+        ),
+        el('div', { class: 'picklist' }, verses.map(v => {
+          const t = verseTr(v);
+          const cb = el('input', { type: 'checkbox', 'data-pick': v.id, onchange: (e) => { if (e.target.checked) picked.add(v.id); else picked.delete(v.id); renderSetup(); } });
+          cb.checked = picked.has(v.id);
+          return el('label', { class: 'pick' }, cb, el('span', { class: 'ppass' }, t.passage), el('span', { class: 'ptext' }, t.text), el('span', { class: 'due' }, dueLabel(v.id)), levelDots(v.id));
+        }))
+      ),
+      el('div', { class: 'field' },
+        el('div', { class: 'lab' }, 'Way of learning'),
+        el('div', { class: 'modes', role: 'radiogroup', 'aria-label': 'Way of learning' }, MODES.map(m =>
+          el('button', { type: 'button', class: 'mode' + (learnMode === m.id ? ' on' : ''), role: 'radio', 'aria-checked': String(learnMode === m.id), onclick: () => { learnMode = m.id; renderSetup(); } },
+            el('strong', null, m.name), el('span', null, m.desc))))
+      ),
+      el('div', { class: 'row' },
+        el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
+        el('label', { class: 'check' }, shuffleBox, 'Shuffle the order')
+      ),
+      el('button', { type: 'button', class: 'primary', onclick: () => startSession([...picked]) },
+        n ? `Start with ${n} verse${n === 1 ? '' : 's'}` : 'Pick at least one verse')
+    ));
+    if (!n) root.querySelector('button.primary').disabled = true;
+    root.querySelector('.picklist').scrollTop = prevScroll;
+    if (focusId) { const f = root.querySelector(`[data-pick="${CSS.escape(focusId)}"]`); if (f) f.focus(); }
+  }
+
+  function startSession(ids) {
+    let list = verses.filter(v => ids.includes(v.id));
+    if (!list.length) return;
+    if (learnShuffle) list = shuffle(list);
+    session = { mode: learnMode, queue: list.map(v => v.id), idx: 0, turned: false, revealed: false, points: 0, gain: 0, streak: 0, best: 0, first: new Map(), finished: false };
+    prepareCard();
+    renderSession();
+    window.scrollTo({ top: 0 });
+  }
+  function currentVerse() {
+    while (session.idx < session.queue.length) {
+      const v = verses.find(x => x.id === session.queue[session.idx]);
+      if (v) return v;
+      session.idx++; // deleted meanwhile
+    }
+    return null;
+  }
+  // Splits text into words and spaces; a word's core is the part between its leading and trailing punctuation.
+  function tokenize(text) {
+    return text.split(/(\s+)/).filter(Boolean).map(s => {
+      const m = /^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/su.exec(s);
+      return { pre: m[1], core: m[2], post: m[3] };
+    });
+  }
+  function prepareCard() {
+    session.turned = session.revealed = false;
+    session.hidden = null;
+    const v = currentVerse();
+    if (!v || session.mode !== 'fade') return;
+    const words = tokenize(verseTr(v).text).map((tk, i) => tk.core ? i : -1).filter(i => i >= 0);
+    session.hidden = new Set(shuffle(words).slice(0, Math.max(1, Math.round(words.length * FADE[boxOf(v.id)]))));
+  }
+  function fadedText(text, reveal) {
+    return tokenize(text).map((tk, i) => !session.hidden.has(i)
+      ? tk.pre + tk.core + tk.post
+      : [tk.pre, el('span', { class: reveal ? 'gapword' : 'gap' }, tk.core), tk.post]).flat();
+  }
+  const firstLetters = (text) => tokenize(text).map(tk => tk.pre + (tk.core ? [...tk.core][0] : '') + tk.post).join('');
+
+  function cardFaces(v) {
+    const t = verseTr(v);
+    const ref = t.passage + (t.translation ? ' · ' + t.translation : '');
+    const text = () => el('div', { class: 'vtxt' }, renderText(t.text, t.highlights || []));
+    const tap = el('div', { class: 'tap' }, 'Tap the card to turn it around');
+    switch (session.mode) {
+      case 'reverse': return [
+        [el('div', { class: 'kicker' }, 'Which passage is this?'), text(), tap],
+        [el('div', { class: 'big' }, t.passage), t.translation ? el('div', { class: 'kicker' }, t.translation) : null, el('div', { class: 'vtxt soft' }, t.text)]
+      ];
+      case 'letters': return [
+        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt letters' }, firstLetters(t.text)), tap],
+        [el('div', { class: 'kicker' }, ref), text()]
+      ];
+      case 'fade': return [
+        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt' }, fadedText(t.text, false)), tap],
+        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt' }, fadedText(t.text, true))]
+      ];
+      default: return [
+        [el('div', { class: 'kicker' }, 'Say the verse'), el('div', { class: 'big' }, t.passage), t.translation ? el('div', { class: 'kicker' }, t.translation) : null, tap],
+        [el('div', { class: 'kicker' }, ref), text()]
+      ];
+    }
+  }
+  function learnControls() {
+    if (!session.revealed) return el('div', { class: 'learnctl' },
+      el('button', { type: 'button', class: 'primary', onclick: turn }, 'Turn around'));
+    return el('div', { class: 'learnctl' },
+      el('div', { class: 'lab' }, 'How well did you know it?'),
+      el('div', { class: 'rate' }, RATINGS.map((r, i) =>
+        el('button', { type: 'button', class: 'r' + i, onclick: () => rate(i) }, r.name, el('span', null, r.desc)))));
+  }
+  function renderSession() {
+    const s = session;
+    const v = s.finished ? null : currentVerse();
+    if (!v) return renderSummary();
+    const [front, back] = cardFaces(v);
+    const card = el('div', { class: 'flip' + (s.turned ? ' turned' : ''), role: 'button', tabindex: '0', 'aria-label': 'Turn the card around', onclick: turn },
+      el('div', { class: 'flip-inner' },
+        el('div', { class: 'face front', 'aria-hidden': String(s.turned) }, front),
+        el('div', { class: 'face back', 'aria-hidden': String(!s.turned) }, back)));
+    $('learn').replaceChildren(
+      el('div', { class: 'hud' },
+        el('span', null, 'Card ', el('b', null, String(s.idx + 1)), ` of ${s.queue.length}`),
+        el('span', null, el('b', null, String(s.points)), ' points', s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
+        el('span', null, s.streak >= 2 ? `${s.streak} in a row` : ''),
+        el('button', { type: 'button', class: 'link', onclick: endSession }, 'End session')),
+      el('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(s.queue.length), 'aria-valuenow': String(s.idx) },
+        el('div', { style: `width:${Math.round(100 * s.idx / s.queue.length)}%` })),
+      card,
+      el('div', { id: 'learnCtl' }, learnControls()),
+      el('p', { class: 'keys' }, 'Keyboard: Space turns the card, 1 to 4 rate it.')
+    );
+  }
+  // Turns the card in place, so the flip animates.
+  function turn() {
+    const s = session;
+    if (!s || s.finished) return;
+    s.turned = !s.turned;
+    const card = $('learn').querySelector('.flip');
+    card.classList.toggle('turned', s.turned);
+    card.querySelector('.front').setAttribute('aria-hidden', String(s.turned));
+    card.querySelector('.back').setAttribute('aria-hidden', String(!s.turned));
+    if (!s.revealed) { s.revealed = true; $('learnCtl').replaceChildren(learnControls()); }
+  }
+  function rate(r) {
+    const s = session, v = currentVerse();
+    if (!v || !s.revealed) return;
+    if (r >= 2) { s.streak++; s.best = Math.max(s.best, s.streak); } else s.streak = 0;
+    s.gain = RATINGS[r].points + (r >= 2 ? Math.min(s.streak - 1, 5) * 2 : 0); // a run of known verses earns a bonus
+    s.points += s.gain;
+    // Only the first rating in a session moves the verse up or down; retries after "Not yet" are for practice.
+    if (!s.first.has(v.id)) { s.first.set(v.id, r); schedule(v.id, r); saveProgress(); }
+    if (r === 0) s.queue.splice(Math.min(s.idx + 3, s.queue.length), 0, v.id);
+    s.idx++;
+    prepareCard();
+    renderSession();
+  }
+  function endSession() {
+    if (session.first.size) { session.finished = true; renderSession(); }
+    else { session = null; renderSetup(); }
+  }
+  function renderSummary() {
+    const s = session;
+    if (!s.finished) {
+      s.finished = true;
+      const today = dayStr();
+      if (s.first.size && !progress.days.includes(today)) { progress.days.push(today); saveProgress(); }
+    }
+    const counts = [0, 0, 0, 0];
+    s.first.forEach(r => counts[r]++);
+    const again = [...s.first].filter(([, r]) => r <= 1).map(([id]) => id);
+    const streak = dayStreak();
+    $('learn').replaceChildren(el('section', { class: 'panel' },
+      el('div', { class: 'learnhead' }, el('h2', null, 'Session complete'), streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null),
+      el('div', null, el('div', { class: 'score' }, String(s.points)), el('div', { class: 'hint' }, `points · best run ${s.best} in a row`)),
+      el('div', { class: 'stats' }, RATINGS.map((r, i) => el('div', { class: 'stat' }, el('b', null, String(counts[i])), el('span', null, r.name)))),
+      el('div', { class: 'results' }, [...s.first].map(([id, r]) => {
+        const v = verses.find(x => x.id === id);
+        return v ? el('div', null, el('span', { class: 'ppass' }, verseTr(v).passage), el('span', { class: 'due' }, RATINGS[r].name), levelDots(id)) : null;
+      })),
+      el('div', { class: 'row' },
+        again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, `Practise the ${again.length} tricky one${again.length === 1 ? '' : 's'} again`) : null,
+        el('button', { type: 'button', onclick: () => startSession([...s.first.keys()]) }, 'Same verses again'),
+        el('button', { type: 'button', onclick: () => { session = null; picked = null; renderSetup(); } }, 'New session'),
+        el('button', { type: 'button', onclick: () => { session = null; setView('board'); } }, 'Back to board'))
+    ));
+  }
+  document.addEventListener('keydown', (e) => {
+    if (view !== 'learn' || !session || session.finished || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target.closest && e.target.closest('input, textarea, select, button')) return;
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); turn(); }
+    else if (session.revealed && /^[1-4]$/.test(e.key)) rate(+e.key - 1);
+  });
+
+  function renderAll() { renderTranslationList(); renderDraftTags(); renderFilters(); renderBoard(); renderLearn(); }
 
   // ---------- export ----------
   function exportJson() {
@@ -764,8 +1165,8 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 
   // ---------- shared mode: Google sign-in + Firestore ----------
   function showApp(on) {
-    document.querySelector('.main').hidden = !on;
-    $('btnExport').hidden = $('btnImport').hidden = !on;
+    appOn = on;
+    applyView();
     $('gate').hidden = on;
     if (!on) { $('exportSheet').hidden = true; $('importSheet').hidden = true; }
   }
@@ -785,7 +1186,7 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
     let store;
     try { store = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
     catch (e) { store = fs.getFirestore(app); }
-    let unsubscribe = null;
+    let unsubscribe = null, unsubscribeProgress = null;
     let deniedEmail = null;
 
     $('btnSignIn').addEventListener('click', () => {
@@ -801,8 +1202,10 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 
     authMod.onAuthStateChanged(auth, user => {
       if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+      if (unsubscribeProgress) { unsubscribeProgress(); unsubscribeProgress = null; }
       if (editingId) stopEdit();
       db = null; synced = new Map(); verses = [];
+      progressRef = null; progress = normalizeProgress(null); session = null; picked = null; view = 'board';
       $('syncErr').hidden = true;
       if (!user) {
         showApp(false);
@@ -832,10 +1235,18 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
         if (err.code === 'permission-denied') { deniedEmail = user.email; authMod.signOut(auth); return; }
         showSyncError(err);
       });
+      const progressDoc = fs.doc(store, 'progress', user.uid);
+      unsubscribeProgress = fs.onSnapshot(progressDoc, snap => {
+        progressRef = progressDoc;
+        progress = normalizeProgress(snap.exists() ? snap.data() : null);
+        renderBoard();
+        if (!session) renderLearn();
+      }, showProgressError);
     });
   }
 
   resetVersionBlocks();
+  applyView();
   renderAll();
   if (cloud) startCloud();
 })();
