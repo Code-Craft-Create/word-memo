@@ -227,6 +227,7 @@ button.mode { text-align: left; display: flex; flex-direction: column; gap: 2px;
 .mode strong { font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
 .mode strong svg.ic { color: var(--accent); }
 .mode span { font-size: .8rem; color: var(--muted); }
+.mode span.mcap { margin-top: 4px; font-size: .74rem; color: var(--accent); }
 button.mode.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 button.primary:disabled { opacity: .5; cursor: default; filter: none; }
 .hud { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 14px; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
@@ -1456,7 +1457,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (!raw || typeof raw !== 'object') return out;
     if (raw.verses && typeof raw.verses === 'object') for (const id in raw.verses) {
       const p = raw.verses[id] || {};
-      out.verses[id] = { box: Math.min(MAX_BOX, Math.max(0, Math.floor(+p.box) || 0)), due: typeof p.due === 'string' ? p.due : dayStr(), seen: Math.max(0, Math.floor(+p.seen) || 0), ...(p.last ? { last: String(p.last) } : {}) };
+      out.verses[id] = { box: Math.min(MAX_BOX, Math.max(0, Math.floor(+p.box) || 0)), due: typeof p.due === 'string' ? p.due : dayStr(), seen: Math.max(0, Math.floor(+p.seen) || 0), ...(p.last ? { last: String(p.last) } : {}),
+        ...(typeof p.startDay === 'string' ? { startDay: p.startDay, startBox: Math.min(MAX_BOX, Math.max(0, Math.floor(+p.startBox) || 0)) } : {}) };
     }
     if (Array.isArray(raw.days)) out.days = [...new Set(raw.days.filter(d => typeof d === 'string'))].sort().slice(-400);
     // The verses of the last session started from the setup (or the home screen), to pick up again from home.
@@ -1492,19 +1494,31 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const days = Math.round((new Date(p.due + 'T00:00') - new Date(dayStr() + 'T00:00')) / 864e5);
     return days === 1 ? 'Due tomorrow' : `Due in ${days} days`;
   }
+  // The level a verse had when it was first rated today; it can rise at most DAILY_RISE above it in one day.
+  const DAILY_RISE = 2;
+  const startBoxOf = (p) => p ? (p.startDay === dayStr() ? p.startBox : p.box) : 0;
+  const dailyLimitReached = (id) => { const p = progress.verses[id]; return !!p && p.box < MAX_BOX && p.box >= startBoxOf(p) + DAILY_RISE; };
   function levelDots(id) {
-    const b = boxOf(id), label = `Level ${b} of ${MAX_BOX} · ${dueLabel(id)}`;
+    const b = boxOf(id), label = `Level ${b} of ${MAX_BOX} · ${dueLabel(id)}` + (dailyLimitReached(id) ? ' · +2 today, more tomorrow' : '');
     return el('span', { class: 'lvl', title: label, role: 'img', 'aria-label': label },
       Array.from({ length: MAX_BOX }, (_, i) => el('i', { class: i < b ? 'on' : '' })));
   }
-  // Moves a verse up or down after its first rating in a session.
-  function schedule(id, r) {
+  // Moves a verse up or down after its first rating in a session. Going down always counts. Going up is limited to
+  // DAILY_RISE levels above the verse's level at the start of the day, and to `cap`, the highest level the way of
+  // learning can raise a verse to. Returns true when one of the limits held the verse back.
+  function schedule(id, r, cap) {
     const p = progress.verses[id] || { box: 0, seen: 0 };
-    let box = p.box;
+    const today = dayStr(), startBox = startBoxOf(progress.verses[id]);
+    let box = p.box, limited = false;
     if (r === 0) box = 0;
     else if (r === 1) box = Math.max(1, box - 1);
-    else box = Math.min(MAX_BOX, box + (r === 3 ? 2 : 1));
-    progress.verses[id] = { box, due: addDays(INTERVALS[box]), seen: (p.seen || 0) + 1, last: new Date().toISOString() };
+    else {
+      const want = Math.min(MAX_BOX, box + (r === 3 ? 2 : 1));
+      box = Math.max(box, Math.min(want, startBox + DAILY_RISE, cap == null ? MAX_BOX : cap));
+      limited = box < want;
+    }
+    progress.verses[id] = { box, due: addDays(INTERVALS[box]), seen: (p.seen || 0) + 1, last: new Date().toISOString(), startDay: today, startBox };
+    return limited;
   }
   function dayStreak() {
     const days = new Set(progress.days);
@@ -1572,14 +1586,14 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
   // ---------- learning sessions ----------
   const MODES = [
-    { id: 'flip', icon: 'turn', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' },
-    { id: 'reverse', icon: 'help', name: 'Which verse?', desc: 'Read the text, name the reference, then turn the card.' },
-    { id: 'letters', icon: 'letters', name: 'First letters', desc: 'Only the first letter of each word is shown as a hint.' },
-    { id: 'fade', icon: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
-    { id: 'match', icon: 'link', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' },
-    { id: 'order', icon: 'arrange', name: 'Word order', desc: 'Tap the pieces of the verse in order. They get smaller as you improve.' },
-    { id: 'build', icon: 'build', name: 'Build it up', desc: 'For new verses: learn one phrase at a time, then say it all.' },
-    { id: 'lightning', icon: 'bolt', name: 'Lightning round', desc: 'One minute of quick questions. Try to beat your best.' }
+    { id: 'flip', cap: 6, icon: 'turn', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' },
+    { id: 'reverse', cap: 2, icon: 'help', name: 'Which verse?', desc: 'Read the text, name the reference, then turn the card.' },
+    { id: 'letters', cap: 3, icon: 'letters', name: 'First letters', desc: 'Only the first letter of each word is shown as a hint.' },
+    { id: 'fade', cap: 4, icon: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
+    { id: 'match', cap: 2, icon: 'link', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' },
+    { id: 'order', cap: 4, icon: 'arrange', name: 'Word order', desc: 'Tap the pieces of the verse in order. They get smaller as you improve.' },
+    { id: 'build', cap: 6, icon: 'build', name: 'Build it up', desc: 'For new verses: learn one phrase at a time, then say it all.' },
+    { id: 'lightning', cap: 2, icon: 'bolt', name: 'Lightning round', desc: 'One minute of quick questions. Try to beat your best.' }
   ];
   const RATINGS = [
     { name: 'Not yet', icon: 'again', desc: 'Show it again', points: 0 },
@@ -1759,6 +1773,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   const cardTr = (v) => v.translations[session.trIdx != null && session.trIdx < v.translations.length ? session.trIdx : trIndex(v)];
   const shuffle = (list) => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
+  // Recognising a verse is easier than saying it, so the quick ways only raise a verse part of the way.
+  const capText = (cap) => cap >= MAX_BOX ? 'Can take a verse to Mastered' : `Raises levels up to ${cap}` + (cap === 2 ? ' (Learning)' : cap === 4 ? ' (Learned)' : '');
   function renderSetup() {
     const root = $('learn');
     const prevScroll = (root.querySelector('.picklist') || {}).scrollTop || 0;
@@ -1830,7 +1846,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
           el('button', { type: 'button', class: 'link', onclick: () => openTutorial(firstModeSlide() + Math.max(0, MODES.findIndex(m => m.id === learnMode))) }, icon('info'), 'How this way works')),
         el('div', { class: 'modes', role: 'radiogroup', 'aria-label': 'Way of learning' }, MODES.map(m =>
           el('button', { type: 'button', class: 'mode' + (learnMode === m.id ? ' on' : ''), role: 'radio', 'aria-checked': String(learnMode === m.id), onclick: () => { learnMode = m.id; renderSetup(); } },
-            el('strong', null, icon(m.icon), m.name), el('span', null, m.desc))))
+            el('strong', null, icon(m.icon), m.name), el('span', null, m.desc), el('span', { class: 'mcap' }, capText(m.cap)))))
       ),
       el('div', { class: 'row' },
         el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
@@ -1856,7 +1872,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (learnShuffle) list = shuffle(list);
     // Matching needs two verses; a single verse (e.g. "practise the tricky one again") is shown as a flip card.
     const mode = learnMode === 'match' && list.length < 2 ? 'flip' : learnMode;
-    session = { mode, queue: list.map(v => v.id), idx: 0, turned: false, revealed: false, points: 0, gain: 0, streak: 0, best: 0, first: new Map(), finished: false };
+    session = { mode, queue: list.map(v => v.id), idx: 0, turned: false, revealed: false, points: 0, gain: 0, streak: 0, best: 0, first: new Map(), limited: new Set(), finished: false };
     // Levels before the session, for the before and after comparison in the summary.
     session.before = Object.fromEntries(verses.map(v => [v.id, progress.verses[v.id] ? { ...progress.verses[v.id] } : null]));
     if (st) session.setId = st.id;
@@ -2026,7 +2042,11 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     s.gain = points != null ? points : RATINGS[r].points + (r >= 2 ? Math.min(s.streak - 1, 5) * 2 : 0); // a run of known verses earns a bonus
     s.points += s.gain;
     // Only the first rating in a session moves the verse up or down; retries after "Not yet" are for practice.
-    if (!s.first.has(id)) { s.first.set(id, r); schedule(id, r); saveProgress(); }
+    if (!s.first.has(id)) {
+      s.first.set(id, r);
+      if (schedule(id, r, (MODES.find(m => m.id === s.mode) || {}).cap)) s.limited.add(id);
+      saveProgress();
+    }
   }
   function rate(r) {
     const s = session, v = currentVerse();
@@ -2303,7 +2323,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   function levelChange(s, id) {
     const b = boxBefore(s, id), a = boxOf(id);
     const dir = a > b ? 'up' : a < b ? 'down' : '';
-    return el('span', { class: 'lvchg ' + dir, title: `Level ${b} before, ${a} now` }, dir ? icon(dir === 'up' ? 'arrowup' : 'arrowdown') : null, `Level ${b} → ${a}`);
+    const why = !s.limited.has(id) ? '' : dailyLimitReached(id) || a >= b + DAILY_RISE ? ' (daily limit)' : ` (${(MODES.find(m => m.id === s.mode) || {}).name} raises levels up to ${a})`;
+    return el('span', { class: 'lvchg ' + dir, title: `Level ${b} before, ${a} now` }, dir ? icon(dir === 'up' ? 'arrowup' : 'arrowdown') : null, `Level ${b} → ${a}${why}`);
   }
   // Before and after: levels gained, verses learned and mastered, and the share learned of all verses and of the set.
   function sessionProgress(s) {
@@ -2416,7 +2437,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     { kicker: 'Scoring', icon: 'layers', title: 'Levels bring verses back at the right time',
       text: [el('p', null, 'Each verse has a level from 0 to 6, shown as dots. ', el('b', null, 'Got it'), ' moves it up one level, ', el('b', null, 'Perfect'), ' two, ',
         el('b', null, 'Shaky'), ' down one (but not below 1) and ', el('b', null, 'Not yet'), ' back to 0.'),
-        el('p', null, 'The higher the level, the longer until the verse is due again. Only your first rating of a verse in a session changes its level. From level 3 a verse counts as learned, from level 5 as mastered.')],
+        el('p', null, 'The higher the level, the longer until the verse is due again. Only your first rating of a verse in a session changes its level. From level 3 a verse counts as learned, from level 5 as mastered.'),
+        el('p', null, 'A verse can go up at most 2 levels a day, however often you practise it. Quick ways such as Match up only raise it part of the way: to reach Mastered, say the whole verse from memory.')],
       demo: () => {
         const DUE = ['today', '1 day', '2 days', '4 days', '8 days', '16 days', '32 days'];
         const path = [[0, null], [1, 2], [2, 2], [4, 3], [3, 1], [0, 0]];
