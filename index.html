@@ -145,7 +145,7 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 .pick .due { font-size: .75rem; color: var(--muted); white-space: nowrap; }
 @media (max-width: 520px) { .pick .ptext { display: none; } .pick .due { margin-left: auto; } }
 .check { display: inline-flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: .92rem; color: var(--ink); cursor: pointer; }
-.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 button.mode { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; }
 .mode strong { font-weight: 600; }
 .mode span { font-size: .8rem; color: var(--muted); }
@@ -192,6 +192,25 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
 .results { display: flex; flex-direction: column; }
 .results > div { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: .92rem; }
 .results .ppass { font-family: var(--font-verse); font-weight: 600; flex: 1; min-width: 0; }
+.sets { display: flex; flex-direction: column; gap: 6px; }
+.setrow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px 2px 2px; min-width: 0; }
+.setrow.on { border-color: var(--accent); background: var(--accent-soft); }
+button.setpick { flex: 1; min-width: 0; border: 0; background: none; text-align: left; display: flex; flex-direction: column; padding: 7px 10px; }
+.setpick strong { font-weight: 600; overflow-wrap: anywhere; }
+.setpick span { font-size: .8rem; color: var(--muted); }
+.setrow .bar { width: 90px; flex: none; }
+@media (max-width: 520px) { .setrow .bar { width: 48px; } }
+.savesets input[type=text] { flex: 1 1 200px; width: auto; }
+.match { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, .5fr); gap: 10px; align-items: start; }
+.mcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+button.mitem { text-align: left; padding: 10px 12px; min-width: 0; }
+button.mtext { font-family: var(--font-verse); font-size: .95rem; line-height: 1.5; overflow-wrap: anywhere; }
+.mtext span { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+button.mref { font-family: var(--font-verse); font-weight: 600; }
+button.mitem.sel { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+button.mitem.done { border-color: var(--ok); color: var(--ok); opacity: .55; cursor: default; }
+button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px var(--danger); }
+@media (prefers-reduced-motion: no-preference) { button.mitem.wrong { animation: shake .3s; } @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } } }
 @media (prefers-reduced-motion: reduce) { .flip-inner, .bar > div { transition: none; } }
 @media (prefers-reduced-motion: no-preference) { .card { animation: in .25s ease-out; } @keyframes in { from { transform: translateY(4px); opacity: .6; } } }
 </style>
@@ -838,7 +857,8 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
     { id: 'flip', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' },
     { id: 'reverse', name: 'Which verse?', desc: 'Read the text, name the reference, then turn the card.' },
     { id: 'letters', name: 'First letters', desc: 'Only the first letter of each word is shown as a hint.' },
-    { id: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' }
+    { id: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
+    { id: 'match', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' }
   ];
   const RATINGS = [
     { name: 'Not yet', desc: 'Show it again', points: 0 },
@@ -852,6 +872,63 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
   let picked = null; // ids of the verses chosen for the next session; null until the setup first opens
   let learnMode = 'flip', learnTr = '', learnShuffle = true;
   let session = null;
+
+  // ---------- learning sets ----------
+  // A learning set is a named list of verses to focus on over several days. Sets are shared like verses:
+  // in this browser's storage, or in shared mode in the Firestore collection `sets` (one document per set).
+  const SETS_KEY = 'verseBoard.sets.v1';
+  function normalizeSet(raw) {
+    const name = norm(raw && raw.name);
+    if (!name) return null;
+    return { id: norm(raw.id) || uid(), name, verseIds: Array.isArray(raw.verseIds) ? [...new Set(raw.verseIds.map(String))] : [],
+      createdAt: raw.createdAt || new Date().toISOString(), ...(raw.updatedAt ? { updatedAt: raw.updatedAt } : {}) };
+  }
+  const sortSets = (list) => list.sort((a, b) => a.name.localeCompare(b.name));
+  function loadSets() {
+    if (cloud) return [];
+    try { return sortSets((JSON.parse(localStorage.getItem(SETS_KEY)) || []).map(normalizeSet).filter(Boolean)); } catch (e) { return []; }
+  }
+  let sets = loadSets();
+  let setName = ''; // the name typed under the verse list
+  let pendingSetDelete = null;
+  function storeSet(set, removed) {
+    sets = sortSets([...sets.filter(x => x.id !== set.id), ...(removed ? [] : [set])]);
+    if (!cloud) { try { localStorage.setItem(SETS_KEY, JSON.stringify(sets)); } catch (e) {} return; }
+    if (!db) return;
+    const { id, ...data } = set;
+    (removed ? fs.deleteDoc(fs.doc(db, 'sets', id)) : fs.setDoc(fs.doc(db, 'sets', id), data)).catch(showSetsError);
+  }
+  function showSetsError(err) {
+    $('syncErr').textContent = err && err.code === 'permission-denied'
+      ? 'Learning sets cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.'
+      : 'Could not save the learning set: ' + (err && err.message || err);
+    $('syncErr').hidden = false;
+  }
+  const setVerseIds = (st) => st.verseIds.filter(id => verses.some(v => v.id === id));
+  function setRow(st, on) {
+    const ids = setVerseIds(st);
+    const learned = ids.filter(id => boxOf(id) >= 3).length, dueN = ids.filter(isDue).length;
+    const armed = pendingSetDelete === st.id;
+    return el('div', { class: 'setrow' + (on ? ' on' : '') },
+      el('button', { type: 'button', class: 'setpick', 'aria-pressed': String(on), onclick: () => { picked = new Set(ids); setName = st.name; renderSetup(); } },
+        el('strong', null, st.name),
+        el('span', null, `${ids.length} verse${ids.length === 1 ? '' : 's'} · ${learned} learned · ${dueN} due`)),
+      el('div', { class: 'bar', title: `${learned} of ${ids.length} at level 3 or higher` }, el('div', { style: `width:${ids.length ? Math.round(100 * learned / ids.length) : 0}%` })),
+      el('button', { type: 'button', class: 'link danger' + (armed ? ' armed' : ''), onclick: () => {
+        if (armed) { pendingSetDelete = null; storeSet(st, true); renderSetup(); }
+        else { pendingSetDelete = st.id; renderSetup(); setTimeout(() => { if (pendingSetDelete === st.id) { pendingSetDelete = null; renderLearn(); } }, 4000); }
+      } }, armed ? 'Click again to delete' : 'Delete'));
+  }
+  function saveSelectionAsSet() {
+    const name = norm(setName);
+    if (!name) { $('setMsg').textContent = 'Type a name for the set first.'; $('setName').focus(); return; }
+    if (!picked.size) { $('setMsg').textContent = 'Pick some verses first.'; return; }
+    const existing = sets.find(x => x.name.toLowerCase() === name.toLowerCase());
+    const now = new Date().toISOString();
+    storeSet(existing ? { ...existing, verseIds: [...picked], updatedAt: now } : { id: uid(), name, verseIds: [...picked], createdAt: now });
+    renderSetup();
+    $('setMsg').textContent = existing ? `Updated "${existing.name}".` : `Saved "${name}".`;
+  }
 
   function applyView() {
     document.querySelector('.main').hidden = !appOn || view !== 'board';
@@ -901,11 +978,25 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
     trSelect.value = learnTr;
     const shuffleBox = el('input', { type: 'checkbox', onchange: (e) => { learnShuffle = e.target.checked; } });
     shuffleBox.checked = learnShuffle;
-    const n = picked.size;
+    const n = picked.size, minPick = learnMode === 'match' ? 2 : 1;
+    const sameAsPicked = (st) => { const ids = setVerseIds(st); return ids.length === picked.size && ids.every(id => picked.has(id)); };
+    const activeSet = n ? sets.find(sameAsPicked) : null;
+    const typedSet = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase());
+    const nameInput = el('input', { type: 'text', id: 'setName', placeholder: 'Name, e.g. Advent 2026', autocomplete: 'off', 'aria-label': 'Name of the learning set',
+      oninput: (e) => { setName = e.target.value; const t = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase()); $('btnSaveSet').textContent = t ? 'Update set' : 'Save as set'; $('setMsg').textContent = ''; },
+      onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); saveSelectionAsSet(); } } });
+    nameInput.value = setName;
+    const typing = document.activeElement && document.activeElement.id === 'setName' ? document.activeElement.selectionStart : null;
     root.replaceChildren(el('section', { class: 'panel' },
       el('div', { class: 'learnhead' },
         el('h2', null, 'Start a learning session'),
         streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null),
+      el('div', { class: 'field' },
+        el('div', { class: 'lab' }, 'Learning sets'),
+        sets.length
+          ? el('div', { class: 'sets' }, sets.map(st => setRow(st, activeSet && activeSet.id === st.id)))
+          : el('p', { class: 'hint' }, 'No sets yet. Pick verses below and save them as a set to focus on them over several days.')
+      ),
       el('div', { class: 'field' },
         el('div', { class: 'lab' }, 'Verses'),
         el('div', { class: 'filters' },
@@ -924,7 +1015,10 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
           const cb = el('input', { type: 'checkbox', 'data-pick': v.id, onchange: (e) => { if (e.target.checked) picked.add(v.id); else picked.delete(v.id); renderSetup(); } });
           cb.checked = picked.has(v.id);
           return el('label', { class: 'pick' }, cb, el('span', { class: 'ppass' }, t.passage), el('span', { class: 'ptext' }, t.text), el('span', { class: 'due' }, dueLabel(v.id)), levelDots(v.id));
-        }))
+        })),
+        el('div', { class: 'row savesets' }, nameInput,
+          el('button', { type: 'button', id: 'btnSaveSet', onclick: saveSelectionAsSet }, typedSet ? 'Update set' : 'Save as set'),
+          el('span', { id: 'setMsg', class: 'hint', 'aria-live': 'polite' }))
       ),
       el('div', { class: 'field' },
         el('div', { class: 'lab' }, 'Way of learning'),
@@ -936,11 +1030,12 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
         el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
         el('label', { class: 'check' }, shuffleBox, 'Shuffle the order')
       ),
-      el('button', { type: 'button', class: 'primary', onclick: () => startSession([...picked]) },
-        n ? `Start with ${n} verse${n === 1 ? '' : 's'}` : 'Pick at least one verse')
+      el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked]) },
+        n < minPick ? (minPick === 2 ? 'Pick at least two verses to match' : 'Pick at least one verse') : `Start with ${n} verse${n === 1 ? '' : 's'}`)
     ));
-    if (!n) root.querySelector('button.primary').disabled = true;
+    if (n < minPick) $('btnStart').disabled = true;
     root.querySelector('.picklist').scrollTop = prevScroll;
+    if (typing != null) { nameInput.focus(); nameInput.setSelectionRange(typing, typing); }
     if (focusId) { const f = root.querySelector(`[data-pick="${CSS.escape(focusId)}"]`); if (f) f.focus(); }
   }
 
@@ -948,8 +1043,11 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
     let list = verses.filter(v => ids.includes(v.id));
     if (!list.length) return;
     if (learnShuffle) list = shuffle(list);
-    session = { mode: learnMode, queue: list.map(v => v.id), idx: 0, turned: false, revealed: false, points: 0, gain: 0, streak: 0, best: 0, first: new Map(), finished: false };
-    prepareCard();
+    // Matching needs two verses; a single verse (e.g. "practise the tricky one again") is shown as a flip card.
+    const mode = learnMode === 'match' && list.length < 2 ? 'flip' : learnMode;
+    session = { mode, queue: list.map(v => v.id), idx: 0, turned: false, revealed: false, points: 0, gain: 0, streak: 0, best: 0, first: new Map(), finished: false };
+    if (mode === 'match') { session.rounds = matchRounds(session.queue); session.round = 0; startRound(); }
+    else prepareCard();
     renderSession();
     window.scrollTo({ top: 0 });
   }
@@ -1016,6 +1114,7 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
         el('button', { type: 'button', class: 'r' + i, onclick: () => rate(i) }, r.name, el('span', null, r.desc)))));
   }
   function renderSession() {
+    if (session.mode === 'match' && !session.finished) return renderMatch();
     const s = session;
     const v = s.finished ? null : currentVerse();
     if (!v) return renderSummary();
@@ -1040,7 +1139,7 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
   // Turns the card in place, so the flip animates.
   function turn() {
     const s = session;
-    if (!s || s.finished) return;
+    if (!s || s.finished || s.mode === 'match') return;
     s.turned = !s.turned;
     const card = $('learn').querySelector('.flip');
     card.classList.toggle('turned', s.turned);
@@ -1061,6 +1160,80 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
     prepareCard();
     renderSession();
   }
+  // ---------- "Match up": tap a verse text, then the passage it belongs to ----------
+  const MATCH_ROUND = 5;
+  // Splits the verses into rounds of nearly equal size, at most MATCH_ROUND each and never a round of one.
+  function matchRounds(ids) {
+    const size = Math.ceil(ids.length / Math.ceil(ids.length / MATCH_ROUND));
+    const out = [];
+    for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
+    if (out.length > 1 && out[out.length - 1].length < 2) out[out.length - 2].push(...out.pop());
+    return out;
+  }
+  function startRound() {
+    const s = session;
+    const ids = s.rounds[s.round].filter(id => verses.some(v => v.id === id));
+    s.texts = shuffle(ids); s.refs = shuffle(ids);
+    s.doneText = new Set(); s.doneRef = new Set(); s.misses = new Map(); s.pick = null; s.wrong = null;
+  }
+  function matchTap(kind, id) {
+    const s = session;
+    if (s.wrong) return;
+    if (!s.pick || s.pick.kind === kind) { s.pick = s.pick && s.pick.id === id ? null : { kind, id }; return renderMatch(); }
+    const textId = kind === 'text' ? id : s.pick.id, refId = kind === 'ref' ? id : s.pick.id;
+    s.pick = null;
+    const passageOf = (vid) => verseTr(verses.find(v => v.id === vid)).passage;
+    if (textId !== refId && passageOf(textId) !== passageOf(refId)) {
+      s.misses.set(textId, (s.misses.get(textId) || 0) + 1);
+      s.streak = 0; s.gain = 0;
+      s.wrong = [textId, refId];
+      renderMatch();
+      setTimeout(() => { if (session === s) { s.wrong = null; renderMatch(); } }, 600);
+      return;
+    }
+    s.doneText.add(textId); s.doneRef.add(refId);
+    // A match on the first try counts as "Got it", one miss as "Shaky", more as "Not yet".
+    const m = s.misses.get(textId) || 0, r = m === 0 ? 2 : m === 1 ? 1 : 0;
+    if (r === 2) { s.streak++; s.best = Math.max(s.best, s.streak); } else s.streak = 0;
+    s.gain = RATINGS[r].points + (r === 2 ? Math.min(s.streak - 1, 5) * 2 : 0);
+    s.points += s.gain;
+    if (!s.first.has(textId)) { s.first.set(textId, r); schedule(textId, r); saveProgress(); }
+    renderMatch();
+  }
+  function renderMatch() {
+    const s = session;
+    const total = s.rounds.reduce((n, r) => n + r.length, 0);
+    const doneBefore = s.rounds.slice(0, s.round).reduce((n, r) => n + r.length, 0);
+    const roundDone = s.doneText.size === s.texts.length;
+    const last = s.round === s.rounds.length - 1;
+    const item = (kind, id) => {
+      const t = verseTr(verses.find(v => v.id === id));
+      const done = (kind === 'text' ? s.doneText : s.doneRef).has(id);
+      const cls = 'mitem m' + kind + (done ? ' done' : '') + (s.pick && s.pick.kind === kind && s.pick.id === id ? ' sel' : '')
+        + (s.wrong && s.wrong[kind === 'text' ? 0 : 1] === id ? ' wrong' : '');
+      const b = el('button', { type: 'button', class: cls, onclick: () => matchTap(kind, id) }, kind === 'text' ? el('span', null, t.text) : t.passage);
+      if (done) b.disabled = true;
+      return b;
+    };
+    $('learn').replaceChildren(
+      el('div', { class: 'hud' },
+        el('span', null, 'Round ', el('b', null, String(s.round + 1)), ` of ${s.rounds.length}`),
+        el('span', null, el('b', null, String(s.points)), ' points', s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
+        el('span', null, s.streak >= 2 ? `${s.streak} in a row` : ''),
+        el('button', { type: 'button', class: 'link', onclick: endSession }, 'End session')),
+      el('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(total), 'aria-valuenow': String(doneBefore + s.doneText.size) },
+        el('div', { style: `width:${Math.round(100 * (doneBefore + s.doneText.size) / total)}%` })),
+      el('p', { class: 'hint' }, 'Tap a verse, then the passage it belongs to.'),
+      el('div', { class: 'match' },
+        el('div', { class: 'mcol', 'aria-label': 'Verses' }, s.texts.map(id => item('text', id))),
+        el('div', { class: 'mcol', 'aria-label': 'Passages' }, s.refs.map(id => item('ref', id)))),
+      roundDone ? el('div', { class: 'learnctl' }, el('button', { type: 'button', class: 'primary', onclick: () => {
+        if (last) { s.finished = true; renderSession(); }
+        else { s.round++; startRound(); renderMatch(); window.scrollTo({ top: 0 }); }
+      } }, last ? 'See results' : 'Next round')) : ''
+    );
+  }
+
   function endSession() {
     if (session.first.size) { session.finished = true; renderSession(); }
     else { session = null; renderSetup(); }
@@ -1092,7 +1265,7 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
     ));
   }
   document.addEventListener('keydown', (e) => {
-    if (view !== 'learn' || !session || session.finished || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (view !== 'learn' || !session || session.finished || session.mode === 'match' || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.target.closest && e.target.closest('input, textarea, select, button')) return;
     if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); turn(); }
     else if (session.revealed && /^[1-4]$/.test(e.key)) rate(+e.key - 1);
@@ -1186,7 +1359,7 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
     let store;
     try { store = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
     catch (e) { store = fs.getFirestore(app); }
-    let unsubscribe = null, unsubscribeProgress = null;
+    let unsubscribe = null, unsubscribeProgress = null, unsubscribeSets = null;
     let deniedEmail = null;
 
     $('btnSignIn').addEventListener('click', () => {
@@ -1203,6 +1376,8 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
     authMod.onAuthStateChanged(auth, user => {
       if (unsubscribe) { unsubscribe(); unsubscribe = null; }
       if (unsubscribeProgress) { unsubscribeProgress(); unsubscribeProgress = null; }
+      if (unsubscribeSets) { unsubscribeSets(); unsubscribeSets = null; }
+      sets = []; setName = '';
       if (editingId) stopEdit();
       db = null; synced = new Map(); verses = [];
       progressRef = null; progress = normalizeProgress(null); session = null; picked = null; view = 'board';
@@ -1235,6 +1410,10 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
         if (err.code === 'permission-denied') { deniedEmail = user.email; authMod.signOut(auth); return; }
         showSyncError(err);
       });
+      unsubscribeSets = fs.onSnapshot(fs.collection(store, 'sets'), snap => {
+        sets = sortSets(snap.docs.map(d => normalizeSet({ ...d.data(), id: d.id })).filter(Boolean));
+        if (!session) renderLearn();
+      }, showSetsError);
       const progressDoc = fs.doc(store, 'progress', user.uid);
       unsubscribeProgress = fs.onSnapshot(progressDoc, snap => {
         progressRef = progressDoc;
