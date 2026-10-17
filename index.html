@@ -113,6 +113,7 @@ button.link.danger:hover, button.link.armed { color: var(--danger); }
 a.lookup { display: inline-flex; align-items: center; gap: .3em; font-size: .85rem; color: var(--muted); text-decoration: none; }
 a.lookup:hover { color: var(--accent); }
 a.lookup > svg.ic { width: 1.05em; height: 1.05em; }
+#compareAll { align-self: flex-start; }
 
 .taginput { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; }
 .taginput:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -322,6 +323,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
       <div id="versions" class="versions"></div>
       <datalist id="translationList"></datalist>
       <button id="btnAddVersion" type="button" class="addver" data-icon="plus">Add another translation</button>
+      <a id="compareAll" class="lookup" target="_blank" rel="noopener" data-icon="external" title="Opens the passage on bibleserver.com in every translation you have used, one after another" hidden>Compare all your translations on Bibleserver</a>
       <div class="field">
         <label for="tagInput">Tags <span class="opt">(optional, several allowed)</span></label>
         <div class="taginput" id="tagBox">
@@ -391,7 +393,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.10 (17 Oct 2026)';
+  const APP_VERSION = '1.11 (17 Oct 2026)';
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -587,12 +589,23 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     slt: 'SLT', slt2000: 'SLT', sch2000: 'SLT', schlachter: 'SLT', schlachter2000: 'SLT',
     niv: 'NIV'
   };
+  const bibleserverCode = (translation) => BIBLESERVER_CODES[translation.toLowerCase().replace(/[\s.\-]/g, '')] || translation.toUpperCase();
   // Bibleserver reads both "John 3:16" and "Johannes 3,16", so the passage is passed on as typed.
-  function bibleserverUrl(passage, translation) {
-    const key = translation.toLowerCase().replace(/[\s.\-]/g, '');
-    const code = BIBLESERVER_CODES[key] || translation.toUpperCase();
-    return 'https://www.bibleserver.com/' + (code ? encodeURIComponent(code) + '/' : '') + encodeURIComponent(passage);
+  // Several translations are joined with dots (NIV.NGÜ) and shown one after another.
+  function bibleserverUrl(passage, translations) {
+    const codes = [...new Set(translations.filter(Boolean).map(bibleserverCode))];
+    return 'https://www.bibleserver.com/' + (codes.length ? encodeURIComponent(codes.join('.')) + '/' : '') + encodeURIComponent(passage);
   }
+  // The "compare" link lists every translation used on the board or typed in the form.
+  function updateCompareAll() {
+    const link = $('compareAll');
+    const passage = norm($('versions').querySelector('.vpassage').value);
+    const typed = [...$('versions').querySelectorAll('.vtranslation')].map(i => norm(i.value));
+    const codes = new Set([...allTranslations(), ...typed].filter(Boolean).map(bibleserverCode));
+    link.hidden = !passage || codes.size < 2;
+    if (!link.hidden) link.href = bibleserverUrl(passage, [...codes]);
+  }
+  $('versions').addEventListener('input', updateCompareAll);
   let blockSeq = 0;
   function addVersionBlock(values) {
     const n = blockSeq++;
@@ -638,7 +651,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     block._updateLookup = () => {
       const passage = norm(block.querySelector('.vpassage').value) || norm(blocks.querySelector('.vpassage').value);
       lookup.hidden = !passage;
-      if (passage) lookup.href = bibleserverUrl(passage, norm(block.querySelector('.vtranslation').value));
+      if (passage) lookup.href = bibleserverUrl(passage, [norm(block.querySelector('.vtranslation').value)]);
     };
     block.querySelector('.vpassage').addEventListener('input', () => [...blocks.children].forEach(b => b._updateLookup()));
     block.querySelector('.vtranslation').addEventListener('input', block._updateLookup);
@@ -673,6 +686,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     });
     blocks.forEach((b, i) => { b.querySelector('.vtitle').textContent = blocks.length > 1 ? `Translation ${i + 1}` : ''; });
     blocks[0].querySelector('.vhead').hidden = blocks.length === 1;
+    updateCompareAll();
   }
   function resetVersionBlocks() {
     $('versions').replaceChildren();
@@ -709,6 +723,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
 
   function renderTranslationList() {
     $('translationList').replaceChildren(...allTranslations().map(t => el('option', { value: t })));
+    updateCompareAll();
   }
 
   // ---------- form: tags ----------
