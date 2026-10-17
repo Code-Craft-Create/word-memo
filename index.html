@@ -254,8 +254,8 @@ button.star.on, .chip .star.on { color: var(--warn); }
 @media (max-width: 520px) { .pick .ptext { display: none; } .pick .due { margin-left: auto; } }
 .check { display: inline-flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: .92rem; color: var(--ink); cursor: pointer; }
 .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
-button.mode { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; }
-.mode strong { font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+button.mode { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; min-width: 0; }
+.mode strong { font-weight: 600; display: inline-flex; align-items: center; gap: 7px; min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
 .mode strong svg.ic { color: var(--accent); }
 .mode span { font-size: .8rem; color: var(--muted); }
 .mcap { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px 1px 5px; border-radius: 999px; font-size: .72rem; font-weight: 600; color: var(--ci); background: color-mix(in srgb, var(--c) 16%, transparent); font-variant-numeric: tabular-nums; }
@@ -306,7 +306,7 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
 .startbar button { width: 100%; }
 .pickfold { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); font-size: .9rem; }
 @media (max-width: 520px) {
-  .modes { grid-template-columns: 1fr 1fr; align-items: start; }
+  .modes { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
   .mode:not(.on) span { display: none; }
   .tradd input[type=text], .tradd input#trCode { flex-basis: 100%; }
 }
@@ -605,6 +605,14 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
   <section id="settings" class="page narrow" hidden>
     <section class="panel">
+      <h2 data-icon="globe">Language</h2>
+      <div class="row">
+        <select id="langSelect" aria-label="Language"></select>
+      </div>
+      <p id="langHint" class="hint"></p>
+    </section>
+
+    <section class="panel">
       <h2 data-icon="user">Account</h2>
       <p id="accountText" class="hint">Your verses and learning progress are stored in this browser only.</p>
       <div class="row"><button id="btnSignOut" type="button" data-icon="logout" hidden>Sign out</button></div>
@@ -657,7 +665,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
     <section class="panel">
       <h2 data-icon="download">Back up (export)</h2>
-      <p class="hint">Downloads your verses, learning sets, translations and your own learning progress as a JSON file. You can also copy the JSON and save it as a <code>.json</code> file.</p>
+      <p class="hint">Downloads your verses, learning sets, translations and your own learning progress as a JSON file. You can also copy the JSON and save it as a .json file.</p>
       <div class="row"><button id="btnExport" type="button" class="primary" data-icon="download">Export JSON</button><span id="backupAge" class="backupage"></span></div>
       <div id="exportSheet" class="field" hidden>
         <textarea id="exportText" readonly></textarea>
@@ -702,7 +710,455 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   };
   const FIREBASE_VERSION = '10.14.1';
   // Shown in the footer so you can tell which version a device has loaded. Raise it with every change.
-  const APP_VERSION = '1.27 (17 Oct 2026)';
+  const APP_VERSION = '1.28 (17 Oct 2026)';
+
+  // ---------- languages of the app ----------
+  // All text is written in English in the code; t('English text') returns it in the chosen language. {name} in a text
+  // is filled from `vars`, and **bold** marks words that rich() shows in bold. tn() picks the singular or plural text.
+  // A text that needs another translation in some place gets a note after |, which English leaves out: 'Learning|kicker'.
+  const UI_LANGS = { en: 'English', de: 'Deutsch' };
+  const LANG_KEY = 'verseBoard.lang.v1';
+  // German texts, by their English original. A text missing here is shown in English.
+  const DE = {
+    'Highlight': 'Markieren',
+    'Remove highlight': 'Markierung entfernen',
+    'Home': 'Start',
+    'Hide God\'s word in your heart': 'Gottes Wort im Herzen bewahren',
+    'Menu': 'Menü',
+    'Main': 'Hauptmenü',
+    'Learn': 'Lernen',
+    'All verses': 'Alle Verse',
+    'Add a verse': 'Vers hinzufügen',
+    'Settings & backup': 'Einstellungen & Sicherung',
+    'How learning works': 'So funktioniert das Lernen',
+    'Group': 'Gruppe',
+    'Sign in to your shared verses': 'Melde dich an, um deine geteilten Verse zu sehen',
+    'Loading…': 'Wird geladen…',
+    'Sign in with Google': 'Mit Google anmelden',
+    'Sign out': 'Abmelden',
+    'Search passage or text': 'Bibelstelle oder Text suchen',
+    'Select words in a verse to highlight the key part. Tap or click a highlight to remove it.': 'Markiere Wörter in einem Vers, um das Wichtigste hervorzuheben. Tippe oder klicke auf eine Markierung, um sie zu entfernen.',
+    'Add another translation': 'Weitere Übersetzung hinzufügen',
+    'Opens the passage on bibleserver.com in every translation you have used, one after another': 'Öffnet die Bibelstelle auf bibleserver.com in allen Übersetzungen, die du verwendet hast, nacheinander',
+    'Compare all your translations on Bibleserver': 'Alle deine Übersetzungen auf Bibleserver vergleichen',
+    'Tags': 'Schlagwörter',
+    '(optional, several allowed)': '(optional, mehrere möglich)',
+    'Type and press Enter': 'Eingeben und Enter drücken',
+    'Add verse': 'Vers hinzufügen',
+    'Cancel': 'Abbrechen',
+    'Language': 'Sprache',
+    'Account': 'Konto',
+    'Your verses and learning progress are stored in this browser only.': 'Deine Verse und dein Lernfortschritt werden nur in diesem Browser gespeichert.',
+    'People & groups': 'Personen & Gruppen',
+    'Translations': 'Übersetzungen',
+    'The translations you use and their language. Passages are shown with the book names of a translation\'s language, for example "Johannes 3,16" for a German one. Translations not listed here are shown in English.': 'Die Übersetzungen, die du verwendest, und ihre Sprache. Bibelstellen werden mit den Buchnamen in der Sprache der Übersetzung angezeigt, zum Beispiel "John 3:16" bei einer englischen. Übersetzungen, die hier fehlen, werden auf Englisch angezeigt.',
+    'Abbreviation': 'Abkürzung',
+    'Full name (optional)': 'Vollständiger Name (optional)',
+    'Full name': 'Vollständiger Name',
+    'Add': 'Hinzufügen',
+    'Merge tags': 'Schlagwörter zusammenführen',
+    'Pick the tags to merge and type the new tag. On every verse that has any of them, they are replaced by the new tag. This changes the shared verses and cannot be undone.': 'Wähle die Schlagwörter aus, die zusammengeführt werden sollen, und gib das neue Schlagwort ein. Bei jedem Vers, der eines davon hat, werden sie durch das neue ersetzt. Das ändert die geteilten Verse und kann nicht rückgängig gemacht werden.',
+    'New tag': 'Neues Schlagwort',
+    'Merge…': 'Zusammenführen…',
+    'Reset learning progress': 'Lernfortschritt zurücksetzen',
+    'Sets every verse back to New, as if you had never practised it. Only your own progress is reset; the verses and the other person\'s progress stay as they are. To reset a single verse, use Reset progress on its card under All verses.': 'Setzt jeden Vers auf Neu zurück, als hättest du ihn nie geübt. Nur dein eigener Fortschritt wird zurückgesetzt; die Verse und der Fortschritt der anderen bleiben, wie sie sind. Um einen einzelnen Vers zurückzusetzen, nutze "Fortschritt zurücksetzen" auf seiner Karte unter Alle Verse.',
+    'Also clear my day streak and Lightning round best': 'Auch meine Tage in Folge und meinen Blitzrunden-Rekord löschen',
+    'Reset all…': 'Alles zurücksetzen…',
+    'Back up (export)': 'Sichern (exportieren)',
+    'Downloads your verses, learning sets, translations and your own learning progress as a JSON file. You can also copy the JSON and save it as a .json file.': 'Lädt deine Verse, Lernsets, Übersetzungen und deinen eigenen Lernfortschritt als JSON-Datei herunter. Du kannst das JSON auch kopieren und als .json-Datei speichern.',
+    'Export JSON': 'JSON exportieren',
+    'Copy JSON': 'JSON kopieren',
+    'Import': 'Importieren',
+    'Pick a file exported from Word Memo, or paste its JSON. Verses, sets and translations you already have are kept; duplicates are skipped.': 'Wähle eine aus Word Memo exportierte Datei oder füge ihr JSON ein. Verse, Sets und Übersetzungen, die du schon hast, bleiben erhalten; Doppelte werden übersprungen.',
+    'Also restore my learning progress (only for verses with no progress yet)': 'Auch meinen Lernfortschritt wiederherstellen (nur bei Versen ohne Fortschritt)',
+    'Choose a backup file': 'Sicherungsdatei wählen',
+    'Word Memo · version': 'Word Memo · Version',
+    'Could not save to the shared verses: ': 'Speichern in den geteilten Versen fehlgeschlagen: ',
+    'New Testament': 'Neues Testament',
+    'Old Testament': 'Altes Testament',
+    'No book matches.': 'Kein Buch passt.',
+    'Remove': 'Entfernen',
+    'Translation': 'Übersetzung',
+    'Pick one or type a new one': 'Auswählen oder neu eingeben',
+    'Passage': 'Bibelstelle',
+    'Chapter and verse': 'Kapitel und Vers',
+    'Type to filter, e.g. Joh': 'Zum Filtern tippen, z. B. Joh',
+    'Filter books': 'Bücher filtern',
+    'Opens the passage on bibleserver.com, so you can copy the text here': 'Öffnet die Bibelstelle auf bibleserver.com, damit du den Text hierher kopieren kannst',
+    'Look up on Bibleserver': 'Auf Bibleserver nachschlagen',
+    'The same verse in another translation': 'Derselbe Vers in einer anderen Übersetzung',
+    'For God so loved the world…': 'Denn so sehr hat Gott die Welt geliebt…',
+    'Highlight preview': 'Vorschau der Markierungen',
+    'Select words in the text or the preview to highlight them.': 'Markiere Wörter im Text oder in der Vorschau, um sie hervorzuheben.',
+    'Choose a book': 'Buch wählen',
+    'Favourite translation': 'Lieblingsübersetzung',
+    'Make this the favourite translation': 'Zur Lieblingsübersetzung machen',
+    'Translation {n}': 'Übersetzung {n}',
+    'Edit verse': 'Vers bearbeiten',
+    'Save changes': 'Änderungen speichern',
+    'Remove {tag}': '{tag} entfernen',
+    ' for translation {n}': ' für Übersetzung {n}',
+    'Choose the book{label}.': 'Wähle das Buch{label}.',
+    'Enter chapter and verse{label}, e.g. {a} or {b}.': 'Gib Kapitel und Vers ein{label}, z. B. {a} oder {b}.',
+    'Enter the verse text{label}.': 'Gib den Verstext ein{label}.',
+    'This verse was changed by someone else while you were editing it.': 'Jemand anderes hat diesen Vers geändert, während du ihn bearbeitet hast.',
+    'Save mine anyway': 'Meine Version trotzdem speichern',
+    'or': 'oder',
+    'load their version': 'ihre Version laden',
+    'Added {p}. Add another, or': '{p} hinzugefügt. Füge einen weiteren hinzu oder',
+    'see all verses': 'sieh dir alle Verse an',
+    'All': 'Alle',
+    'Click to remove highlight': 'Klicken, um die Markierung zu entfernen',
+    '{a} of {b} verses': '{a} von {b} Versen',
+    'No verses match this filter.': 'Keine Verse passen zu diesem Filter.',
+    'Your board is empty. Add your first verse with the form, or import a JSON file.': 'Noch keine Verse. Füge deinen ersten Vers hinzu oder importiere eine JSON-Datei.',
+    'Translation for {p}': 'Übersetzung für {p}',
+    '{tr} is your favourite translation': '{tr} ist deine Lieblingsübersetzung',
+    'Make {tr} the favourite translation': '{tr} zur Lieblingsübersetzung machen',
+    'Show only {tag}': 'Nur {tag} zeigen',
+    'Edit': 'Bearbeiten',
+    'Set this verse back to New in your own progress': 'Diesen Vers in deinem eigenen Fortschritt auf Neu zurücksetzen',
+    'Click again to reset': 'Zum Zurücksetzen nochmal klicken',
+    'Reset progress': 'Fortschritt zurücksetzen',
+    'Delete': 'Löschen',
+    'Deleted {p}.': '{p} gelöscht.',
+    'Undo': 'Rückgängig',
+    'Close': 'Schließen',
+    'Your learning progress cannot be saved yet. Publish the updated Firestore rules (see README) in the Firebase console.': 'Dein Lernfortschritt kann noch nicht gespeichert werden. Veröffentliche die aktualisierten Firestore-Regeln (siehe README) in der Firebase-Konsole.',
+    'Could not save your learning progress: ': 'Dein Lernfortschritt konnte nicht gespeichert werden: ',
+    'New': 'Neu',
+    'Due now': 'Jetzt fällig',
+    'Due tomorrow': 'Morgen fällig',
+    'Due in {n} days': 'In {n} Tagen fällig',
+    'Level {a} of {b}': 'Stufe {a} von {b}',
+    '+2 today, more tomorrow': '+2 heute, mehr ab morgen',
+    '{n}% learned': '{n} % gelernt',
+    'learned': 'gelernt',
+    '{n} due': '{n} fällig',
+    '{a} of {b} learned': '{a} von {b} gelernt',
+    'Learning sets cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.': 'Lernsets können noch nicht geteilt werden. Veröffentliche die aktualisierten Firestore-Regeln (siehe README) in der Firebase-Konsole.',
+    'Could not save the learning set: ': 'Das Lernset konnte nicht gespeichert werden: ',
+    'Deleted the set "{name}".': 'Set "{name}" gelöscht.',
+    'Type a name for the set first.': 'Gib zuerst einen Namen für das Set ein.',
+    'Pick some verses first.': 'Wähle zuerst ein paar Verse aus.',
+    'Updated "{name}".': '"{name}" aktualisiert.',
+    'Saved "{name}".': '"{name}" gespeichert.',
+    'Your last session': 'Deine letzte Lerneinheit',
+    'Continue learning': 'Weiterlernen',
+    'Change verses or mode': 'Verse oder Lernart ändern',
+    'Ready to learn': 'Bereit zum Lernen',
+    'Start learning': 'Mit dem Lernen beginnen',
+    'Start a learning session': 'Lerneinheit starten',
+    'Welcome': 'Willkommen',
+    'Add the first verse you want to memorise.': 'Füge den ersten Vers hinzu, den du auswendig lernen möchtest.',
+    'due today': 'heute fällig',
+    'day in a row': 'Tag in Folge',
+    'days in a row': 'Tage in Folge',
+    'verse': 'Vers',
+    'verses': 'Verse',
+    'Your progress': 'Dein Fortschritt',
+    'Learning sets': 'Lernsets',
+    'Can take a verse to Mastered': 'Kann einen Vers bis Gemeistert bringen',
+    'Raises levels up to {n}': 'Hebt Stufen bis {n}',
+    'up to level {n}': 'bis Stufe {n}',
+    'To go higher, use {list}.': 'Für höhere Stufen nutze {list}.',
+    'Add some verses to the board first.': 'Füge zuerst ein paar Verse hinzu.',
+    'Favourite translation of each verse': 'Lieblingsübersetzung jedes Verses',
+    'Select all verses': 'Alle Verse auswählen',
+    'Name, e.g. Advent 2026': 'Name, z. B. Advent 2026',
+    'Name of the learning set': 'Name des Lernsets',
+    'Update set': 'Set aktualisieren',
+    'Save as set': 'Als Set speichern',
+    'No sets yet. Pick verses below and save them as a set to focus on them over several days.': 'Noch keine Sets. Wähle unten Verse aus und speichere sie als Set, um dich über mehrere Tage auf sie zu konzentrieren.',
+    'Verses': 'Verse',
+    'Remove the verses tagged {tag}': 'Die Verse mit dem Schlagwort {tag} abwählen',
+    'Add the verses tagged {tag}': 'Die Verse mit dem Schlagwort {tag} auswählen',
+    '{a} of {b} verses selected': '{a} von {b} Versen ausgewählt',
+    'Show the list': 'Liste zeigen',
+    'Deselect all': 'Alle abwählen',
+    'Select all': 'Alle auswählen',
+    '{a} of {b} selected': '{a} von {b} ausgewählt',
+    'Way of learning': 'Lernart',
+    'How this way works': 'So funktioniert diese Lernart',
+    'Shuffle the order': 'Reihenfolge mischen',
+    'Pick at least two verses to match': 'Wähle mindestens zwei Verse zum Zuordnen',
+    'Pick at least one verse': 'Wähle mindestens einen Vers',
+    'Tap the card to turn it around': 'Tippe auf die Karte, um sie umzudrehen',
+    'Which passage is this?': 'Welche Bibelstelle ist das?',
+    'Say the verse': 'Sag den Vers auf',
+    'Turn around': 'Umdrehen',
+    'How well did you know it?': 'Wie gut konntest du ihn?',
+    'Turn the card around': 'Karte umdrehen',
+    'Card **{a}** of {b}': 'Karte **{a}** von {b}',
+    'points': 'Punkte',
+    '{n} in a row': '{n} in Folge',
+    'End session': 'Beenden',
+    'Show another translation': 'Andere Übersetzung zeigen',
+    'From memory': 'Aus dem Gedächtnis',
+    'How does it begin? Say as much as you can before you see any words': 'Wie fängt er an? Sag so viel du kannst, bevor du Wörter siehst',
+    'Now say the whole verse': 'Jetzt sag den ganzen Vers',
+    'Phrase {a} of {b}': 'Abschnitt {a} von {b}',
+    'Say it from the start, with the new phrase': 'Sag ihn von Anfang an, mit dem neuen Abschnitt',
+    'Check yourself, then read the phrase aloud a few times': 'Prüf dich selbst, dann lies den Abschnitt ein paar Mal laut',
+    'Show the first phrase': 'Ersten Abschnitt zeigen',
+    'Next phrase': 'Nächster Abschnitt',
+    'Say the whole verse': 'Ganzen Vers aufsagen',
+    'Show the verse': 'Vers zeigen',
+    'No slips': 'Keine Fehler',
+    'See results': 'Ergebnis ansehen',
+    'Next verse': 'Nächster Vers',
+    'Tap the next piece': 'Tippe das nächste Stück an',
+    'Tap the first piece': 'Tippe das erste Stück an',
+    'How does it begin?': 'Wie fängt er an?',
+    'right': 'richtig',
+    'Round **{a}** of {b}': 'Runde **{a}** von {b}',
+    'Tap a verse, then the passage it belongs to.': 'Tippe einen Vers an, dann die Bibelstelle, zu der er gehört.',
+    'Passages': 'Bibelstellen',
+    'Next round': 'Nächste Runde',
+    'Session complete': 'Lerneinheit geschafft',
+    'points · best run {n} in a row': 'Punkte · beste Serie {n} in Folge',
+    '{a} of {b} answers right in one minute': '{a} von {b} Antworten richtig in einer Minute',
+    'a new personal best': 'ein neuer persönlicher Rekord',
+    'your best is {n}': 'dein Rekord ist {n}',
+    'Same verses again': 'Dieselben Verse nochmal',
+    'New session': 'Neue Lerneinheit',
+    'Done': 'Fertig',
+    'daily limit': 'Tageslimit',
+    '{mode} raises levels up to {n}': '{mode} hebt Stufen bis {n}',
+    'Level {a} before, {b} now': 'Vorher Stufe {a}, jetzt {b}',
+    'Level {a} → {b}': 'Stufe {a} → {b}',
+    '{a}% learned before, {b}% now': 'Vorher {a} % gelernt, jetzt {b} %',
+    'level': 'Stufe',
+    'levels': 'Stufen',
+    'mastered': 'gemeistert',
+    'Before': 'Vorher',
+    'After': 'Nachher',
+    'Say it from memory, then tap to turn': 'Sag ihn aus dem Gedächtnis, dann tippe zum Umdrehen',
+    'Check yourself and **rate how well you knew it**': 'Prüf dich und **bewerte, wie gut du ihn konntest**',
+    'This way rates itself: no slips is **{r2}**, one or two slips **{r1}**, more **{r0}**.': 'Diese Lernart bewertet selbst: keine Fehler ist **{r2}**, ein oder zwei Fehler **{r1}**, mehr **{r0}**.',
+    'Learning|kicker': 'Lernen',
+    'Pick the verses you want to practise, choose a way of learning, and say each verse from memory. There is nothing to type.': 'Wähle die Verse aus, die du üben möchtest, wähle eine Lernart und sag jeden Vers aus dem Gedächtnis auf. Tippen musst du nichts.',
+    'After each verse you rate how well you knew it. The app uses that to give you points and to decide when the verse comes back.': 'Nach jedem Vers bewertest du, wie gut du ihn konntest. Daraus berechnet die App deine Punkte und wann der Vers wiederkommt.',
+    'Pick verses': 'Verse wählen',
+    'Choose a way': 'Lernart wählen',
+    'Rate yourself': 'Selbst bewerten',
+    'Scoring': 'Punkte',
+    'Rate yourself, earn points': 'Bewerte dich, sammle Punkte',
+    '**{r0}** gives no points and shows the verse again three cards later. **{r1}** (you needed help) gives 5, **{r2}** (small slips) 10 and **{r3}** (word for word) 15.': '**{r0}** gibt keine Punkte und zeigt den Vers drei Karten später nochmal. **{r1}** (du brauchtest Hilfe) gibt 5, **{r2}** (kleine Fehler) 10 und **{r3}** (Wort für Wort) 15.',
+    'Be honest with yourself: the rating decides how soon you see the verse again.': 'Sei ehrlich mit dir: Die Bewertung entscheidet, wann du den Vers wiedersiehst.',
+    'A run earns a bonus': 'Eine Serie bringt einen Bonus',
+    'Every verse you rate **{r2}** or **{r3}** in a row adds 2 extra points, up to 10 extra per verse.': 'Jeder Vers, den du nacheinander mit **{r2}** oder **{r3}** bewertest, bringt 2 Extrapunkte mehr, bis zu 10 extra pro Vers.',
+    'A **{r1}** or **{r0}** ends the run, and the next one starts again from zero.': 'Ein **{r1}** oder **{r0}** beendet die Serie, und die nächste beginnt wieder bei null.',
+    'bonus +{n}': 'Bonus +{n}',
+    '{r}: the run ends': '{r}: die Serie endet',
+    'Levels bring verses back at the right time': 'Stufen bringen Verse zur richtigen Zeit zurück',
+    'Each verse has a level from 0 to 6, shown as dots. **{r2}** moves it up one level, **{r3}** two, **{r1}** down one (but not below 1) and **{r0}** back to 0.': 'Jeder Vers hat eine Stufe von 0 bis 6, als Punkte angezeigt. **{r2}** hebt ihn eine Stufe, **{r3}** zwei, **{r1}** senkt ihn um eine (aber nicht unter 1) und **{r0}** setzt ihn auf 0.',
+    'The higher the level, the longer until the verse is due again. Only your first rating of a verse in a session changes its level. From level 3 a verse counts as learned, from level 5 as mastered.': 'Je höher die Stufe, desto länger dauert es, bis der Vers wieder fällig ist. Nur deine erste Bewertung eines Verses in einer Lerneinheit ändert seine Stufe. Ab Stufe 3 gilt ein Vers als gelernt, ab Stufe 5 als gemeistert.',
+    'A verse can go up at most 2 levels a day, however often you practise it. Quick ways such as {match} only raise it part of the way: to reach Mastered, say the whole verse from memory.': 'Ein Vers kann pro Tag höchstens 2 Stufen steigen, egal wie oft du ihn übst. Schnelle Lernarten wie {match} heben ihn nur ein Stück weit: Um Gemeistert zu erreichen, sag den ganzen Vers aus dem Gedächtnis.',
+    'today': 'heute',
+    'A new verse starts at level 0': 'Ein neuer Vers beginnt auf Stufe 0',
+    'level {n}': 'Stufe {n}',
+    'due in {when}': 'fällig in {when}',
+    'due again today': 'heute wieder fällig',
+    'Keep your day streak': 'Bleib Tag für Tag dran',
+    'Every day you learn at least one verse counts towards your streak. The home page shows how many days in a row you have learned, and how many verses are due today.': 'Jeder Tag, an dem du mindestens einen Vers lernst, zählt für deine Tage in Folge. Die Startseite zeigt, an wie vielen Tagen in Folge du gelernt hast und wie viele Verse heute fällig sind.',
+    'Learn today to keep it going': 'Lern heute, damit es weitergeht',
+    'You see the passage. Say the verse aloud or in your head, then turn the card and compare.': 'Du siehst die Bibelstelle. Sag den Vers laut oder im Kopf auf, dann dreh die Karte um und vergleiche.',
+    'The other way round: you read the verse and name where it is from.': 'Umgekehrt: Du liest den Vers und nennst, wo er steht.',
+    'Only the first letter of each word is shown. A good step between reading a verse and knowing it by heart.': 'Nur der erste Buchstabe jedes Wortes wird gezeigt. Ein guter Schritt zwischen Lesen und Auswendigkönnen.',
+    'Some words are blanked out. The higher a verse\'s level, the more words disappear, until none are left.': 'Einige Wörter werden ausgeblendet. Je höher die Stufe eines Verses, desto mehr Wörter verschwinden, bis keines mehr übrig ist.',
+    'Tap a verse, then the passage it belongs to, in rounds of up to five verses. You need at least two verses for this.': 'Tippe einen Vers an, dann die Bibelstelle, zu der er gehört, in Runden von bis zu fünf Versen. Dafür brauchst du mindestens zwei Verse.',
+    'Rates itself: right at the first try is **{r2}**, one miss **{r1}**, more **{r0}**.': 'Bewertet selbst: beim ersten Versuch richtig ist **{r2}**, ein Fehlgriff **{r1}**, mehr **{r0}**.',
+    'A miss: this verse counts as **{r}**': 'Fehlgriff: dieser Vers zählt als **{r}**',
+    'Round complete': 'Runde geschafft',
+    'The verse is cut into pieces. Tap them in the right order. The better you know a verse, the smaller the pieces get.': 'Der Vers wird in Stücke geteilt. Tippe sie in der richtigen Reihenfolge an. Je besser du einen Vers kannst, desto kleiner werden die Stücke.',
+    'Wrong piece: one slip': 'Falsches Stück: ein Fehler',
+    'Done with one slip: **{r}** +5': 'Fertig mit einem Fehler: **{r}** +5',
+    'You start with no text at all and say as much as you can from memory. Then the verse comes back one phrase at a time: you say everything so far, with first letters as a hint for the earlier phrases. At the end you say the whole verse and rate yourself.': 'Du beginnst ganz ohne Text und sagst so viel du kannst aus dem Gedächtnis. Dann kommt der Vers Abschnitt für Abschnitt zurück: Du sagst jedes Mal alles bisher, mit Anfangsbuchstaben als Hilfe für die früheren Abschnitte. Am Ende sagst du den ganzen Vers und bewertest dich.',
+    'One minute of quick questions about the verses you picked: which passage is this, or how does this passage begin. Try to beat your best.': 'Eine Minute schnelle Fragen zu den gewählten Versen: Welche Bibelstelle ist das, oder wie fängt diese Bibelstelle an. Versuch, deinen Rekord zu schlagen.',
+    'A right answer counts as **{r2}** with points, a wrong one as **{r1}** without points.': 'Eine richtige Antwort zählt als **{r2}** mit Punkten, eine falsche als **{r1}** ohne Punkte.',
+    'Ways of learning · {a} of {b}': 'Lernarten · {a} von {b}',
+    'Can take a verse all the way to Mastered.': 'Kann einen Vers bis Gemeistert bringen.',
+    'Raises a verse to level **{n}** at most.': 'Hebt einen Vers höchstens auf Stufe **{n}**.',
+    'Back': 'Zurück',
+    'Slides': 'Folien',
+    'Next': 'Weiter',
+    'Translations cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.': 'Übersetzungen können noch nicht geteilt werden. Veröffentliche die aktualisierten Firestore-Regeln (siehe README) in der Firebase-Konsole.',
+    'Could not save the translations: ': 'Die Übersetzungen konnten nicht gespeichert werden: ',
+    'Language of {tr}': 'Sprache von {tr}',
+    'No translations yet.': 'Noch keine Übersetzungen.',
+    'Also on your verses:': 'Auch bei deinen Versen:',
+    'Type the abbreviation, e.g. ESV.': 'Gib die Abkürzung ein, z. B. LUT.',
+    '{x} is already in the list.': '{x} ist schon in der Liste.',
+    'Saved with your account, so it is used on all your devices.': 'Wird mit deinem Konto gespeichert und gilt auf all deinen Geräten.',
+    'Saved in this browser.': 'Wird in diesem Browser gespeichert.',
+    'No tags yet.': 'Noch keine Schlagwörter.',
+    'Merge into "{name}"': 'Zu "{name}" zusammenführen',
+    'Pick the tags to merge first.': 'Wähle zuerst die Schlagwörter aus, die zusammengeführt werden sollen.',
+    'Type the new tag.': 'Gib das neue Schlagwort ein.',
+    'Pick another tag or type a different name.': 'Wähle ein weiteres Schlagwort oder gib einen anderen Namen ein.',
+    'There is no progress to reset yet.': 'Es gibt noch keinen Fortschritt zum Zurücksetzen.',
+    'Reset my progress': 'Meinen Fortschritt zurücksetzen',
+    'No backup from this device yet': 'Noch keine Sicherung von diesem Gerät',
+    'Last backup from this device: {when}': 'Letzte Sicherung von diesem Gerät: {when}',
+    'yesterday': 'gestern',
+    '{n} days ago': 'vor {n} Tagen',
+    'Copied': 'Kopiert',
+    'Selected, press Ctrl/Cmd+C to copy': 'Markiert, drücke Strg/Cmd+C zum Kopieren',
+    'That is not valid JSON. Check that you pasted the whole export.': 'Das ist kein gültiges JSON. Prüfe, ob du den ganzen Export eingefügt hast.',
+    'No "verses" list found in this JSON.': 'Keine "verses"-Liste in diesem JSON gefunden.',
+    'skipped {n} already on the board': '{n} schon vorhandene übersprungen',
+    'ignored {n} without passage or text': '{n} ohne Bibelstelle oder Text ignoriert',
+    'Could not load Firebase. Check your internet connection and reload the page.': 'Firebase konnte nicht geladen werden. Prüfe deine Internetverbindung und lade die Seite neu.',
+    'Add yourself to a group under People & groups below.': 'Füge dich unten unter Personen & Gruppen einer Gruppe hinzu.',
+    'Loading verses…': 'Verse werden geladen…',
+    'Could not check your access: ': 'Dein Zugang konnte nicht geprüft werden: ',
+    '{email} has not been added to Word Memo yet.': '{email} wurde noch nicht zu Word Memo hinzugefügt.',
+    'Ask the person who manages the app to add you, then reload this page.': 'Bitte die Person, die die App verwaltet, dich hinzuzufügen, und lade dann diese Seite neu.',
+    'You are not in a group yet.': 'Du bist noch in keiner Gruppe.',
+    'Ask the person who manages the app to add you to one, then reload this page.': 'Bitte die Person, die die App verwaltet, dich einer Gruppe hinzuzufügen, und lade dann diese Seite neu.',
+    'Signed in as {email}. You are in the group "{group}": its verses and learning sets are shared within the group; your learning progress is your own.': 'Angemeldet als {email}. Du bist in der Gruppe "{group}": Ihre Verse und Lernsets werden in der Gruppe geteilt; dein Lernfortschritt gehört nur dir.',
+    'Signed in as {email}. Verses and learning sets are shared; your learning progress is your own.': 'Angemeldet als {email}. Verse und Lernsets werden geteilt; dein Lernfortschritt gehört nur dir.',
+    'you': 'dich',
+    'Could not save: ': 'Speichern fehlgeschlagen: ',
+    'Unknown group': 'Unbekannte Gruppe',
+    'Only you see this panel. People you add sign in with that Google address at': 'Nur du siehst diesen Bereich. Personen, die du hinzufügst, melden sich mit dieser Google-Adresse an unter',
+    'and see the verses and learning sets of their groups. Everyone\'s learning progress stays their own.': 'und sehen die Verse und Lernsets ihrer Gruppen. Der Lernfortschritt bleibt bei jedem persönlich.',
+    'People': 'Personen',
+    'Add a person': 'Person hinzufügen',
+    'Groups': 'Gruppen',
+    'New group name': 'Name der neuen Gruppe',
+    'Create group': 'Gruppe erstellen',
+    'No groups yet. Create one below.': 'Noch keine Gruppen. Erstelle unten eine.',
+    'Name of {email}': 'Name von {email}',
+    'Renamed to {name}.': 'Umbenannt in {name}.',
+    'No access': 'Kein Zugang',
+    'Last seen {day}': 'Zuletzt gesehen am {day}',
+    'Not signed in yet': 'Noch nie angemeldet',
+    'Remove access': 'Zugang entfernen',
+    'Give access back': 'Zugang zurückgeben',
+    'Google address': 'Google-Adresse',
+    'How they are shown': 'Wie die Person angezeigt wird',
+    'Add person': 'Person hinzufügen',
+    'Type their Google address, for example name@gmail.com.': 'Gib die Google-Adresse ein, zum Beispiel name@gmail.com.',
+    'Type a name for them.': 'Gib einen Namen ein.',
+    'Added {name}.': '{name} hinzugefügt.',
+    'Put them in a group so they can see verses.': 'Füge die Person einer Gruppe hinzu, damit sie Verse sieht.',
+    'Send them the link {link} and ask them to sign in with {email}.': 'Schick ihr den Link {link} und bitte sie, sich mit {email} anzumelden.',
+    'Name of the group {name}': 'Name der Gruppe {name}',
+    'Renamed the group to {name}.': 'Gruppe umbenannt in {name}.',
+    'No members': 'Keine Mitglieder',
+    'Type a name for the new group.': 'Gib einen Namen für die neue Gruppe ein.',
+    'There is already a group called {name}.': 'Es gibt schon eine Gruppe namens {name}.',
+    'Created the group {name}. Tick it on a person to add them.': 'Gruppe {name} erstellt. Wähle sie bei einer Person an, um sie hinzuzufügen.',
+    'Sign-in failed: ': 'Anmeldung fehlgeschlagen: ',
+    'Sign in with your Google account to see and edit the verses you share.': 'Melde dich mit deinem Google-Konto an, um die geteilten Verse zu sehen und zu bearbeiten.',
+    '{name} added to {group}.': '{name} zu {group} hinzugefügt.',
+    '{name} removed from {group}.': '{name} aus {group} entfernt.',
+    '{book} has {n} chapter.': '{book} hat {n} Kapitel.',
+    '{book} has {n} chapters.': '{book} hat {n} Kapitel.',
+    '{n} verse': '{n} Vers',
+    '{n} verses': '{n} Verse',
+    '{n} day in a row': '{n} Tag in Folge',
+    '{n} days in a row': '{n} Tage in Folge',
+    'Start with {n} verse': 'Mit {n} Vers starten',
+    'Start with {n} verses': 'Mit {n} Versen starten',
+    '{n} slip': '{n} Fehler',
+    '{n} slips': '{n} Fehler',
+    'Practise the tricky one again': 'Den schwierigen nochmal üben',
+    'Practise the {n} tricky ones again': 'Die {n} schwierigen nochmal üben',
+    '{n} day': '{n} Tag',
+    '{n} days': '{n} Tage',
+    'Replace {tags} with "{name}" on {n} verse? This cannot be undone.': '{tags} bei {n} Vers durch "{name}" ersetzen? Das kann nicht rückgängig gemacht werden.',
+    'Replace {tags} with "{name}" on {n} verses? This cannot be undone.': '{tags} bei {n} Versen durch "{name}" ersetzen? Das kann nicht rückgängig gemacht werden.',
+    'Merged into "{name}" on {n} verse.': 'Bei {n} Vers zu "{name}" zusammengeführt.',
+    'Merged into "{name}" on {n} verses.': 'Bei {n} Versen zu "{name}" zusammengeführt.',
+    'Reset your progress on {n} verse to New and clear your day streak and Lightning round best? This cannot be undone.': 'Deinen Fortschritt bei {n} Vers auf Neu zurücksetzen und deine Tage in Folge und deinen Blitzrunden-Rekord löschen? Das kann nicht rückgängig gemacht werden.',
+    'Reset your progress on {n} verses to New and clear your day streak and Lightning round best? This cannot be undone.': 'Deinen Fortschritt bei {n} Versen auf Neu zurücksetzen und deine Tage in Folge und deinen Blitzrunden-Rekord löschen? Das kann nicht rückgängig gemacht werden.',
+    'Reset your progress on {n} verse to New? This cannot be undone.': 'Deinen Fortschritt bei {n} Vers auf Neu zurücksetzen? Das kann nicht rückgängig gemacht werden.',
+    'Reset your progress on {n} verses to New? This cannot be undone.': 'Deinen Fortschritt bei {n} Versen auf Neu zurücksetzen? Das kann nicht rückgängig gemacht werden.',
+    'Reset {n} verse to New, streak and best cleared.': '{n} Vers auf Neu zurückgesetzt, Tage in Folge und Rekord gelöscht.',
+    'Reset {n} verses to New, streak and best cleared.': '{n} Verse auf Neu zurückgesetzt, Tage in Folge und Rekord gelöscht.',
+    'Reset {n} verse to New.': '{n} Vers auf Neu zurückgesetzt.',
+    'Reset {n} verses to New.': '{n} Verse auf Neu zurückgesetzt.',
+    '{n} set': '{n} Set',
+    '{n} sets': '{n} Sets',
+    '{n} translation': '{n} Übersetzung',
+    '{n} translations': '{n} Übersetzungen',
+    'progress for {n} verse': 'Fortschritt für {n} Vers',
+    'progress for {n} verses': 'Fortschritt für {n} Verse',
+    'Imported {n} verse': '{n} Vers importiert',
+    'Imported {n} verses': '{n} Verse importiert',
+    'English': 'Englisch',
+    'German': 'Deutsch',
+    'new': 'neu',
+    'Not practised yet': 'Noch nicht geübt',
+    'Learning': 'Am Lernen',
+    'learning': 'am Lernen',
+    'Level 0 to 2': 'Stufe 0 bis 2',
+    'Learned': 'Gelernt',
+    'Level 3 or 4': 'Stufe 3 oder 4',
+    'Mastered': 'Gemeistert',
+    'Level 5 or 6': 'Stufe 5 oder 6',
+    'Which verse?': 'Welcher Vers?',
+    'Read the text, name the reference, then turn the card.': 'Lies den Text, nenne die Bibelstelle, dann dreh die Karte um.',
+    'Match up': 'Zuordnen',
+    'Pair each verse with its passage, in rounds of up to five.': 'Ordne jedem Vers seine Bibelstelle zu, in Runden von bis zu fünf.',
+    'Lightning round': 'Blitzrunde',
+    'One minute of quick questions. Try to beat your best.': 'Eine Minute schnelle Fragen. Versuch, deinen Rekord zu schlagen.',
+    'First letters': 'Anfangs\u00ADbuchstaben',
+    'Only the first letter of each word is shown as a hint.': 'Nur der erste Buchstabe jedes Wortes wird als Hilfe gezeigt.',
+    'Fading words': 'Verblassende Wörter',
+    'Words are blanked out. The better you know a verse, the more disappear.': 'Wörter werden ausgeblendet. Je besser du einen Vers kannst, desto mehr verschwinden.',
+    'Word order': 'Wort\u00ADreihenfolge',
+    'Tap the pieces of the verse in order. They get smaller as you improve.': 'Tippe die Stücke des Verses der Reihe nach an. Sie werden kleiner, je besser du wirst.',
+    'Build it up': 'Schritt für Schritt',
+    'Start from memory, learn one phrase at a time, then say it all.': 'Beginne aus dem Gedächtnis, lerne Abschnitt für Abschnitt, dann sag alles auf.',
+    'Flip cards': 'Karteikarten',
+    'See the reference, say the verse, then turn the card.': 'Sieh die Bibelstelle, sag den Vers auf, dann dreh die Karte um.',
+    'Not yet': 'Noch nicht',
+    'Show it again': 'Nochmal zeigen',
+    'Shaky': 'Wackelig',
+    'Needed help': 'Brauchte Hilfe',
+    'Got it': 'Sitzt',
+    'Small slips': 'Kleine Fehler',
+    'Perfect': 'Perfekt',
+    'Word for word': 'Wort für Wort',
+    'Keyboard: Enter goes on to the next verse.': 'Tastatur: Enter geht zum nächsten Vers.',
+    'Keyboard: Space goes on, 1 to 4 rate the verse at the end.': 'Tastatur: Leertaste geht weiter, 1 bis 4 bewerten den Vers am Ende.',
+    'Keyboard: 1 to 4 pick an answer.': 'Tastatur: 1 bis 4 wählen eine Antwort.',
+    'Keyboard: Space turns the card, 1 to 4 rate it.': 'Tastatur: Leertaste dreht die Karte um, 1 bis 4 bewerten sie.'
+  };
+  const UI_TEXT = { de: DE };
+  // The language chosen on this device before, else the browser's language if the app has it, else English.
+  // In shared mode the language saved in the person's own data wins once it has loaded.
+  let uiLang = (() => {
+    try { const s = localStorage.getItem(LANG_KEY); if (UI_LANGS[s]) return s; } catch (e) {}
+    const nav = (navigator.languages || [navigator.language || '']).map(l => String(l).slice(0, 2).toLowerCase()).find(l => UI_LANGS[l]);
+    return nav || 'en';
+  })();
+  function t(s, vars) {
+    let out = (UI_TEXT[uiLang] && UI_TEXT[uiLang][s]) || s.split('|')[0];
+    if (vars) out = out.replace(/\{(\w+)\}/g, (m, k) => k in vars ? String(vars[k]) : m);
+    return out;
+  }
+  const tn = (n, one, many, vars) => t(n === 1 ? one : many, { n, ...vars });
+  // Dates in the chosen language, in the browser's regional style when that matches.
+  const dateLocale = () => (navigator.language || '').toLowerCase().startsWith(uiLang) ? navigator.language : uiLang;
+  // The texts written in the page itself, recorded in English once, so they can be shown in either language.
+  const staticText = [], staticAttrs = [];
+  (() => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n; (n = walker.nextNode());) if (n.data.trim() && !n.parentElement.closest('script, style')) staticText.push([n, n.data]);
+    document.body.querySelectorAll('[placeholder], [title], [aria-label]').forEach(e =>
+      ['placeholder', 'title', 'aria-label'].forEach(a => { if (e.hasAttribute(a)) staticAttrs.push([e, a, e.getAttribute(a)]); }));
+  })();
+  function translateStatic() {
+    document.documentElement.lang = uiLang;
+    staticText.forEach(([n, orig]) => { const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(orig); n.data = m[1] + t(m[2]) + m[3]; });
+    staticAttrs.forEach(([e, a, orig]) => e.setAttribute(a, t(orig)));
+  }
+  translateStatic();
 
   document.getElementById('appVersion').textContent = APP_VERSION;
 
@@ -753,7 +1209,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     trend: '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
     chart: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>',
     arrowup: '<path d="M12 19V5"/><path d="m6 11 6-6 6 6"/>',
-    arrowdown: '<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>'
+    arrowdown: '<path d="M12 5v14"/><path d="m6 13 6 6 6-6"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>'
   };
   function icon(name) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -833,7 +1290,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   const BOOK_BY_KEY = new Map();
   BOOKS.forEach(b => b.keys.forEach(k => { if (!BOOK_BY_KEY.has(k)) BOOK_BY_KEY.set(k, b.id); }));
   // Book names exist in these languages; a translation is shown with the book names of its language.
-  const LANGUAGES = { en: 'English', de: 'German' };
+  const LANGUAGES = { en: 'English', de: 'German' }; // shown with t()
   const bookName = (id, lang) => BOOK[id] ? BOOK[id].names[lang] || BOOK[id].names.en : id;
 
   // Chapter and verses are stored English style ("3:16,18"). German style ("3,16.18") is converted;
@@ -983,7 +1440,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     });
   }
   function showSyncError(err) {
-    $('syncErr').textContent = 'Could not save to the shared verses: ' + (err && err.message || err);
+    $('syncErr').textContent = t('Could not save to the shared verses: ') + (err && err.message || err);
     $('syncErr').hidden = false;
   }
 
@@ -1012,6 +1469,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     kids.flat().forEach(c => c != null && n.append(c));
     return n;
   }
+  // Turns "a **b** c" into text with the middle part in bold.
+  const rich = (s) => s.split(/\*\*(.+?)\*\*/).map((p, i) => i % 2 ? el('b', null, p) : p);
 
   // ---------- form: translation blocks ----------
   // Bibleserver codes for translations people commonly type under other names; anything else is passed on as typed.
@@ -1072,11 +1531,11 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     };
     const group = (nt) => {
       const list = shown.filter(b => b.nt === nt);
-      return list.length ? [el('span', { class: 'lab' }, nt ? 'New Testament' : 'Old Testament'),
+      return list.length ? [el('span', { class: 'lab' }, nt ? t('New Testament') : t('Old Testament')),
         el('div', { class: 'books' }, list.map(b => el('button', { type: 'button', class: block._book === b.id ? 'on' : '', onclick: () => pick(b.id) }, bookName(b.id, lang))))] : [];
     };
     panel._first = shown[0] ? () => pick(shown[0].id) : null;
-    panel.querySelector('.bookgrid').replaceChildren(...group(false), ...group(true), ...(shown.length ? [] : [el('span', { class: 'hint' }, 'No book matches.')]));
+    panel.querySelector('.bookgrid').replaceChildren(...group(false), ...group(true), ...(shown.length ? [] : [el('span', { class: 'hint' }, t('No book matches.'))]));
   }
   function toggleBookPanel(block) {
     const panel = block.querySelector('.bookpanel');
@@ -1101,28 +1560,28 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         el('span', { class: 'vtitle' }),
         el('span', { class: 'vend' },
           el('span', { class: 'vstar' }),
-          first ? el('button', { type: 'button', class: 'link danger', onclick: () => { block.remove(); numberBlocks(); } }, icon('trash'), 'Remove') : null)
+          first ? el('button', { type: 'button', class: 'link danger', onclick: () => { block.remove(); numberBlocks(); } }, icon('trash'), t('Remove')) : null)
       ),
       el('div', { class: 'field' },
-        el('label', { for: 'translation-' + n }, 'Translation ', el('span', { class: 'opt' }, '(optional)')),
-        el('input', { id: 'translation-' + n, class: 'vtranslation', type: 'text', list: 'translationList', placeholder: 'Pick one or type a new one', autocomplete: 'off' })
+        el('label', { for: 'translation-' + n }, t('Translation') + ' ', el('span', { class: 'opt' }, t('(optional)'))),
+        el('input', { id: 'translation-' + n, class: 'vtranslation', type: 'text', list: 'translationList', placeholder: t('Pick one or type a new one'), autocomplete: 'off' })
       ),
       el('div', { class: 'field bookfield' },
-        el('label', { for: 'book-' + n }, 'Passage'),
+        el('label', { for: 'book-' + n }, t('Passage')),
         el('div', { class: 'passrow' },
           el('button', { id: 'book-' + n, type: 'button', class: 'bookbtn', 'aria-haspopup': 'true', 'aria-expanded': 'false', onclick: () => toggleBookPanel(block) }),
-          el('input', { class: 'vref', type: 'text', placeholder: '3:16', 'aria-label': 'Chapter and verse', autocomplete: 'off' })),
+          el('input', { class: 'vref', type: 'text', placeholder: refText('3:16', uiLang), 'aria-label': t('Chapter and verse'), autocomplete: 'off' })),
         el('div', { class: 'bookpanel', hidden: '' },
-          el('input', { class: 'bookfilter', type: 'search', placeholder: 'Type to filter, e.g. Joh', 'aria-label': 'Filter books', autocomplete: 'off' }),
+          el('input', { class: 'bookfilter', type: 'search', placeholder: t('Type to filter, e.g. Joh'), 'aria-label': t('Filter books'), autocomplete: 'off' }),
           el('div', { class: 'bookgrid' }))
       ),
       el('div', { class: 'field' },
         el('div', { class: 'labelrow' },
-          el('label', { for: 'content-' + n }, 'Text'),
-          el('a', { class: 'lookup', target: '_blank', rel: 'noopener', title: 'Opens the passage on bibleserver.com, so you can copy the text here' }, icon('external'), 'Look up on Bibleserver')),
-        el('textarea', { id: 'content-' + n, class: 'vtext', placeholder: first ? 'The same verse in another translation' : 'For God so loved the world…' }),
-        el('div', { class: 'hlpreview', 'aria-label': 'Highlight preview' }),
-        el('span', { class: 'hint hlhint' }, 'Select words in the text or the preview to highlight them.')
+          el('label', { for: 'content-' + n }, t('Text')),
+          el('a', { class: 'lookup', target: '_blank', rel: 'noopener', title: t('Opens the passage on bibleserver.com, so you can copy the text here') }, icon('external'), t('Look up on Bibleserver'))),
+        el('textarea', { id: 'content-' + n, class: 'vtext', placeholder: first ? t('The same verse in another translation') : t('For God so loved the world…') }),
+        el('div', { class: 'hlpreview', 'aria-label': t('Highlight preview') }),
+        el('span', { class: 'hint hlhint' }, t('Select words in the text or the preview to highlight them.'))
       )
     );
     blocks.append(block);
@@ -1161,7 +1620,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       const btn = block.querySelector('.bookbtn');
       const book = block._book || (first && first._book);
       btn.classList.toggle('empty', !book);
-      btn.replaceChildren(el('span', null, book ? bookName(book, blockLang(block)) : 'Choose a book'), icon('down'));
+      btn.replaceChildren(el('span', null, book ? bookName(book, blockLang(block)) : t('Choose a book')), icon('down'));
       if (!panel.hidden) renderBookPanel(block);
     };
     // The Bibleserver link follows this block's passage (or the first block's) and translation.
@@ -1192,7 +1651,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   function numberBlocks() {
     const blocks = [...$('versions').children];
     blocks.forEach(b => {
-      const label = b._fav ? 'Favourite translation' : 'Make this the favourite translation';
+      const label = b._fav ? t('Favourite translation') : t('Make this the favourite translation');
       b.querySelector('.vstar').replaceChildren(starButton(b._fav, label, () => {
         const on = !b._fav;
         blocks.forEach(x => { x._fav = false; });
@@ -1200,7 +1659,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         numberBlocks();
       }));
     });
-    blocks.forEach((b, i) => { b.querySelector('.vtitle').textContent = blocks.length > 1 ? `Translation ${i + 1}` : ''; });
+    blocks.forEach((b, i) => { b.querySelector('.vtitle').textContent = blocks.length > 1 ? t('Translation {n}', { n: i + 1 }) : ''; });
     blocks[0].querySelector('.vhead').hidden = blocks.length === 1;
     updateCompareAll();
   }
@@ -1218,8 +1677,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     v.translations.forEach(t => addVersionBlock(t));
     draftTags = [...(v.tags || [])];
     $('formErr').textContent = '';
-    $('formTitle').textContent = 'Edit verse';
-    setLabel($('btnSubmit'), 'Save changes');
+    $('formTitle').textContent = t('Edit verse');
+    setLabel($('btnSubmit'), t('Save changes'));
     $('btnCancelEdit').hidden = false;
     $('form').classList.add('editing');
     $('formMsg').textContent = '';
@@ -1231,8 +1690,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     editingId = null;
     draftTags = [];
     $('formErr').textContent = '';
-    $('formTitle').textContent = 'Add a verse';
-    setLabel($('btnSubmit'), 'Add verse');
+    $('formTitle').textContent = t('Add a verse');
+    setLabel($('btnSubmit'), t('Add verse'));
     $('btnCancelEdit').hidden = true;
     $('form').classList.remove('editing');
     resetVersionBlocks();
@@ -1259,8 +1718,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     renderDraftTags();
   }
   function renderDraftTags() {
-    $('tagChips').replaceChildren(...draftTags.map((t, i) =>
-      el('span', { class: 'chip' }, t, el('button', { type: 'button', 'aria-label': 'Remove ' + t, onclick: () => { draftTags.splice(i, 1); renderDraftTags(); } }, '×'))
+    $('tagChips').replaceChildren(...draftTags.map((tag, i) =>
+      el('span', { class: 'chip' }, tag, el('button', { type: 'button', 'aria-label': t('Remove {tag}', { tag }), onclick: () => { draftTags.splice(i, 1); renderDraftTags(); } }, '×'))
     ));
     renderTagSuggest();
   }
@@ -1290,7 +1749,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       const b = blocks[i];
       const translation = norm(b.querySelector('.vtranslation').value);
       const text = norm(b.querySelector('.vtext').value);
-      const label = blocks.length > 1 ? ` for translation ${i + 1}` : '';
+      const label = blocks.length > 1 ? t(' for translation {n}', { n: i + 1 }) : '';
       let { book, ref, typed } = blockRef(b);
       if (i > 0 && !text && !translation && !typed) continue; // untouched extra block
       const parsed = /[a-zäöü]{2}/i.test(typed) && parsePassage(typed);
@@ -1298,19 +1757,19 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         ({ book, ref } = parsed);
         b._book = book; b.querySelector('.vref').value = refText(ref, langOf(translation)); // later blocks fall back to these
       }
-      if (!book) { $('formErr').textContent = `Choose the book${label}.`; b.querySelector('.bookbtn').focus(); return; }
-      if (!ref) { $('formErr').textContent = `Enter chapter and verse${label}, e.g. 3:16 or 3:16-18.`; b.querySelector('.vref').focus(); return; }
-      if (parseInt(ref, 10) > BOOK[book].chapters) { $('formErr').textContent = `${bookName(book, langOf(translation))} has ${BOOK[book].chapters} chapter${BOOK[book].chapters === 1 ? '' : 's'}.`; b.querySelector('.vref').focus(); return; }
-      if (!text) { $('formErr').textContent = `Enter the verse text${label}.`; b.querySelector('.vtext').focus(); return; }
+      if (!book) { $('formErr').textContent = t('Choose the book{label}.', { label }); b.querySelector('.bookbtn').focus(); return; }
+      if (!ref) { $('formErr').textContent = t('Enter chapter and verse{label}, e.g. {a} or {b}.', { label, a: refText('3:16', uiLang), b: refText('3:16-18', uiLang) }); b.querySelector('.vref').focus(); return; }
+      if (parseInt(ref, 10) > BOOK[book].chapters) { $('formErr').textContent = tn(BOOK[book].chapters, '{book} has {n} chapter.', '{book} has {n} chapters.', { book: bookName(book, langOf(translation)) }); b.querySelector('.vref').focus(); return; }
+      if (!text) { $('formErr').textContent = t('Enter the verse text{label}.', { label }); b.querySelector('.vtext').focus(); return; }
       // The typed passage is kept too, in the translation's language, for older versions of the app.
       translations.push({ passage: passageText(book, ref, langOf(translation)), book, ref, translation, text, highlights: carryHighlights({ text: b.querySelector('.vtext').value, highlights: b._hl }, text), ...(b._fav ? { favorite: true } : {}) });
     }
     $('formErr').textContent = '';
     const existing = editingId && verses.find(v => v.id === editingId);
     if (existing && !saveAnyway && verseJson(existing) !== editingBase) {
-      $('formErr').replaceChildren('This verse was changed by someone else while you were editing it. ',
-        el('button', { type: 'button', class: 'link', onclick: () => { saveAnyway = true; $('form').requestSubmit(); } }, 'Save mine anyway'), ' or ',
-        el('button', { type: 'button', class: 'link', onclick: () => startEdit(existing) }, 'load their version'), '.');
+      $('formErr').replaceChildren(t('This verse was changed by someone else while you were editing it.') + ' ',
+        el('button', { type: 'button', class: 'link', onclick: () => { saveAnyway = true; $('form').requestSubmit(); } }, t('Save mine anyway')), ' ' + t('or') + ' ',
+        el('button', { type: 'button', class: 'link', onclick: () => startEdit(existing) }, t('load their version')), '.');
       return;
     }
     saveAnyway = false;
@@ -1326,7 +1785,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     stopEdit();
     renderAll();
     if (existing) { setView('board'); return; }
-    $('formMsg').replaceChildren(`Added ${passageOf(translations[0])}. Add another, or `, el('button', { type: 'button', class: 'link', 'data-view': 'board' }, 'see all verses'), '.');
+    $('formMsg').replaceChildren(t('Added {p}. Add another, or', { p: passageOf(translations[0]) }) + ' ', el('button', { type: 'button', class: 'link', 'data-view': 'board' }, t('see all verses')), '.');
     $('versions').querySelector('.vtranslation').focus();
   });
 
@@ -1335,7 +1794,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const tc = tagCounts();
     if (activeTag && !tc.some(([t]) => t === activeTag)) activeTag = null;
     $('filters').replaceChildren(
-      ...(tc.length ? [el('button', { type: 'button', class: 'chip' + (activeTag ? ' suggest' : ' on'), onclick: () => { activeTag = null; renderBoard(); renderFilters(); } }, 'All')] : []),
+      ...(tc.length ? [el('button', { type: 'button', class: 'chip' + (activeTag ? ' suggest' : ' on'), onclick: () => { activeTag = null; renderBoard(); renderFilters(); } }, t('All'))] : []),
       ...tc.map(([t, n]) => el('button', { type: 'button', class: 'chip' + (activeTag === t ? ' on' : ' suggest'), onclick: () => { activeTag = activeTag === t ? null : t; renderBoard(); renderFilters(); } }, `${t} · ${n}`))
     );
   }
@@ -1343,13 +1802,13 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const parts = []; let pos = 0;
     highlights.forEach((h, i) => {
       if (h.start > pos) parts.push(text.slice(pos, h.start));
-      parts.push(el('mark', { 'data-hi': String(i), title: 'Click to remove highlight' }, text.slice(h.start, h.end)));
+      parts.push(el('mark', { 'data-hi': String(i), title: t('Click to remove highlight') }, text.slice(h.start, h.end)));
       pos = h.end;
     });
     if (pos < text.length) parts.push(text.slice(pos));
     return parts;
   }
-  const versionLabel = (t, i) => t.translation || `Translation ${i + 1}`;
+  const versionLabel = (tr, i) => tr.translation || t('Translation {n}', { n: i + 1 });
   // The favourite translation is shown first on the board and used for learning; without one, the first is used.
   const favIndex = (v) => Math.max(0, v.translations.findIndex(t => t.favorite));
   function starIcon(on) {
@@ -1372,10 +1831,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       (!activeTag || (v.tags || []).includes(activeTag)) &&
       (!q || v.translations.some(t => (passageOf(t) + ' ' + (t.book ? bookName(t.book, 'en') + ' ' + bookName(t.book, 'de') : t.passage) + ' ' + t.text + ' ' + t.translation).toLowerCase().includes(q)))
     );
-    $('count').textContent = shown.length === verses.length ? `${verses.length} verse${verses.length === 1 ? '' : 's'}` : `${shown.length} of ${verses.length} verses`;
+    $('count').textContent = shown.length === verses.length ? tn(verses.length, '{n} verse', '{n} verses') : t('{a} of {b} verses', { a: shown.length, b: verses.length });
     if (!shown.length) {
       $('board').replaceChildren(el('div', { class: 'empty', style: 'column-span: all' },
-        verses.length ? 'No verses match this filter.' : 'Your board is empty. Add your first verse with the form, or import a JSON file.'));
+        verses.length ? t('No verses match this filter.') : t('Your board is empty. Add your first verse with the form, or import a JSON file.')));
       return;
     }
     $('board').replaceChildren(...shown.map(v => {
@@ -1384,10 +1843,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       const cur = v.translations[idx];
       let picker = null;
       if (v.translations.length > 1) {
-        picker = el('select', { 'aria-label': 'Translation for ' + passageOf(cur), onchange: (e) => { shownVersion.set(v.id, +e.target.value); renderBoard(); } },
+        picker = el('select', { 'aria-label': t('Translation for {p}', { p: passageOf(cur) }), onchange: (e) => { shownVersion.set(v.id, +e.target.value); renderBoard(); } },
           v.translations.map((t, i) => el('option', { value: String(i) }, versionLabel(t, i))));
         picker.value = String(idx);
-        const label = cur.favorite ? `${versionLabel(cur, idx)} is your favourite translation` : `Make ${versionLabel(cur, idx)} the favourite translation`;
+        const label = cur.favorite ? t('{tr} is your favourite translation', { tr: versionLabel(cur, idx) }) : t('Make {tr} the favourite translation', { tr: versionLabel(cur, idx) });
         picker = el('span', { class: 'refr' }, starButton(!!cur.favorite, label, () => {
           const on = !cur.favorite;
           v.translations.forEach(t => { delete t.favorite; });
@@ -1402,15 +1861,15 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         el('div', { class: 'ref' }, el('span', { class: 'passage' }, passageOf(cur)), picker),
         el('blockquote', { 'data-vid': v.id, 'data-ti': String(idx) }, renderText(cur.text, cur.highlights || [])),
         el('div', { class: 'foot' },
-          el('div', { class: 'tags' }, (v.tags || []).map(t => el('button', { type: 'button', class: 'chip', title: 'Show only ' + t, onclick: () => { activeTag = t; renderBoard(); renderFilters(); } }, t))),
+          el('div', { class: 'tags' }, (v.tags || []).map(tag => el('button', { type: 'button', class: 'chip', title: t('Show only {tag}', { tag }), onclick: () => { activeTag = tag; renderBoard(); renderFilters(); } }, tag))),
           el('div', { class: 'actions' },
             levelDots(v.id),
-            el('button', { type: 'button', class: 'link', onclick: () => startEdit(v) }, icon('edit'), 'Edit'),
-            progress.verses[v.id] ? el('button', { type: 'button', class: 'link' + (resetArmed ? ' armed' : ''), title: 'Set this verse back to New in your own progress', onclick: () => {
+            el('button', { type: 'button', class: 'link', onclick: () => startEdit(v) }, icon('edit'), t('Edit')),
+            progress.verses[v.id] ? el('button', { type: 'button', class: 'link' + (resetArmed ? ' armed' : ''), title: t('Set this verse back to New in your own progress'), onclick: () => {
               if (resetArmed) { pendingReset = null; resetVerse(v.id); }
               else { pendingReset = v.id; renderBoard(); setTimeout(() => { if (pendingReset === v.id) { pendingReset = null; renderBoard(); } }, 4000); }
-            } }, icon('again'), resetArmed ? 'Click again to reset' : 'Reset progress') : null,
-            el('button', { type: 'button', class: 'link danger', onclick: () => deleteVerse(v) }, icon('trash'), 'Delete')
+            } }, icon('again'), resetArmed ? t('Click again to reset') : t('Reset progress')) : null,
+            el('button', { type: 'button', class: 'link danger', onclick: () => deleteVerse(v) }, icon('trash'), t('Delete'))
           )
         )
       );
@@ -1423,7 +1882,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (editingId === v.id) stopEdit();
     verses = verses.filter(x => x !== v);
     save(); renderAll();
-    showUndo(`Deleted ${passageOf(v.translations[favIndex(v)])}.`, () => {
+    showUndo(t('Deleted {p}.', { p: passageOf(v.translations[favIndex(v)]) }), () => {
       if (verses.some(x => x.id === v.id)) return;
       verses.splice(Math.min(at, verses.length), 0, v);
       save(); renderAll();
@@ -1436,8 +1895,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     clearTimeout(undoTimer);
     const close = () => { clearTimeout(undoTimer); bar.hidden = true; bar.replaceChildren(); };
     bar.replaceChildren(el('span', null, text),
-      el('button', { type: 'button', onclick: () => { close(); undo(); } }, icon('again'), 'Undo'),
-      el('button', { type: 'button', 'aria-label': 'Close', onclick: close }, icon('x')));
+      el('button', { type: 'button', onclick: () => { close(); undo(); } }, icon('again'), t('Undo')),
+      el('button', { type: 'button', 'aria-label': t('Close'), onclick: close }, icon('x')));
+
     bar.hidden = false;
     undoTimer = setTimeout(close, 10000);
   }
@@ -1565,6 +2025,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         ...(typeof p.startDay === 'string' ? { startDay: p.startDay, startBox: Math.min(MAX_BOX, Math.max(0, Math.floor(+p.startBox) || 0)) } : {}) };
     }
     if (Array.isArray(raw.days)) out.days = [...new Set(raw.days.filter(d => typeof d === 'string'))].sort().slice(-400);
+    // The language this person chose for the app.
+    if (UI_LANGS[raw.lang]) out.lang = raw.lang;
     // The verses of the last session started from the setup (or the home screen), to pick up again from home.
     const l = raw.last;
     if (l && typeof l === 'object' && Array.isArray(l.verseIds)) out.last = { verseIds: l.verseIds.map(String), mode: String(l.mode || 'flip'), at: String(l.at || ''), ...(l.setId ? { setId: String(l.setId) } : {}) };
@@ -1594,25 +2056,25 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
   function showProgressError(err) {
     $('syncErr').textContent = err && err.code === 'permission-denied'
-      ? 'Your learning progress cannot be saved yet. Publish the updated Firestore rules (see README) in the Firebase console.'
-      : 'Could not save your learning progress: ' + (err && err.message || err);
+      ? t('Your learning progress cannot be saved yet. Publish the updated Firestore rules (see README) in the Firebase console.')
+      : t('Could not save your learning progress: ') + (err && err.message || err);
     $('syncErr').hidden = false;
   }
   const isDue = (id) => { const p = progress.verses[id]; return !p || p.due <= dayStr(); };
   const boxOf = (id) => (progress.verses[id] || {}).box || 0;
   function dueLabel(id) {
     const p = progress.verses[id];
-    if (!p) return 'New';
-    if (p.due <= dayStr()) return 'Due now';
+    if (!p) return t('New');
+    if (p.due <= dayStr()) return t('Due now');
     const days = Math.round((new Date(p.due + 'T00:00') - new Date(dayStr() + 'T00:00')) / 864e5);
-    return days === 1 ? 'Due tomorrow' : `Due in ${days} days`;
+    return days === 1 ? t('Due tomorrow') : t('Due in {n} days', { n: days });
   }
   // The level a verse had when it was first rated today; it can rise at most DAILY_RISE above it in one day.
   const DAILY_RISE = 2;
   const startBoxOf = (p) => p ? (p.startDay === dayStr() ? p.startBox : p.box) : 0;
   const dailyLimitReached = (id) => { const p = progress.verses[id]; return !!p && p.box < MAX_BOX && p.box >= startBoxOf(p) + DAILY_RISE; };
   function levelDots(id) {
-    const b = boxOf(id), st = stageOf(id), label = `${STAGES[st].name} · Level ${b} of ${MAX_BOX} · ${dueLabel(id)}` + (dailyLimitReached(id) ? ' · +2 today, more tomorrow' : '');
+    const b = boxOf(id), st = stageOf(id), label = `${STAGES[st].name} · ${t('Level {a} of {b}', { a: b, b: MAX_BOX })} · ${dueLabel(id)}` + (dailyLimitReached(id) ? ' · ' + t('+2 today, more tomorrow') : '');
     return el('span', { class: 'lvl s' + st, title: label, role: 'img', 'aria-label': label },
       Array.from({ length: MAX_BOX }, (_, i) => el('i', { class: i < b ? 'on' : '' })));
   }
@@ -1646,11 +2108,14 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   // Every verse is in one stage for the signed-in person: new (never practised), learning (level 0 to 2),
   // learned (level 3 or 4) or mastered (level 5 or 6). "Learned" in counts and percentages means learned or mastered.
   const STAGES = [
-    { name: 'New', icon: 'fresh', desc: 'Not practised yet' },
-    { name: 'Learning', icon: 'sprout', desc: 'Level 0 to 2' },
-    { name: 'Learned', icon: 'learned', desc: 'Level 3 or 4' },
-    { name: 'Mastered', icon: 'trophy', desc: 'Level 5 or 6' }
+    { en: 'New', low: 'new', icon: 'fresh', en_desc: 'Not practised yet' },
+    { en: 'Learning', low: 'learning', icon: 'sprout', en_desc: 'Level 0 to 2' },
+    { en: 'Learned', low: 'learned', icon: 'learned', en_desc: 'Level 3 or 4' },
+    { en: 'Mastered', low: 'mastered', icon: 'trophy', en_desc: 'Level 5 or 6' }
   ];
+  // Names and descriptions in the chosen language; `lower` is the name inside a sentence ("3 learned").
+  STAGES.forEach(st => Object.defineProperties(st, {
+    name: { get: () => t(st.en) }, lower: { get: () => t(st.low) }, desc: { get: () => t(st.en_desc) } }));
   const stageOfEntry = (p) => !p ? 0 : p.box >= 5 ? 3 : p.box >= 3 ? 2 : 1;
   const stageOf = (id) => stageOfEntry(progress.verses[id]);
   function stageCounts(ids, of) {
@@ -1660,7 +2125,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
   const learnedOf = (c) => c[2] + c[3];
   const pctOf = (c) => { const n = c[0] + c[1] + c[2] + c[3]; return n ? Math.round(100 * learnedOf(c) / n) : 0; };
-  const stageText = (c) => STAGES.map((st, i) => `${c[i]} ${st.name.toLowerCase()}`).join(', ');
+  const stageText = (c) => STAGES.map((st, i) => `${c[i]} ${st.lower}`).join(', ');
   function stageBar(c, thin) {
     return el('div', { class: 'sbar' + (thin ? ' thin' : ''), role: 'img', 'aria-label': stageText(c), title: stageText(c) },
       c.map((k, i) => k ? el('div', { class: 's' + i, style: `flex-grow:${k}` }) : null));
@@ -1674,8 +2139,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     svg.innerHTML = `<circle class="rtrack" cx="18" cy="18" r="15.9"/>` +
       (l ? `<circle class="r2" cx="18" cy="18" r="15.9" pathLength="100" stroke-dasharray="${l} 100" stroke-dashoffset="${-m}" transform="rotate(-90 18 18)"/>` : '') +
       (m ? `<circle class="r3" cx="18" cy="18" r="15.9" pathLength="100" stroke-dasharray="${m} 100" transform="rotate(-90 18 18)"/>` : '');
-    return el('div', { class: 'ringwrap' + (small ? ' small' : ''), role: 'img', 'aria-label': `${pctOf(c)}% learned` }, svg,
-      el('div', { class: 'rnum' }, el('b', null, pctOf(c) + '%'), small ? null : el('span', null, 'learned')));
+    return el('div', { class: 'ringwrap' + (small ? ' small' : ''), role: 'img', 'aria-label': t('{n}% learned', { n: pctOf(c) }) }, svg,
+      el('div', { class: 'rnum' }, el('b', null, pctOf(c) + '%'), small ? null : el('span', null, t('learned'))));
   }
   function stageTiles(c) {
     return el('div', { class: 'stages' }, STAGES.map((st, i) =>
@@ -1689,32 +2154,33 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   function stageMinis(ids, c) {
     const dueN = ids.filter(isDue).length;
     return el('span', { class: 'minis' },
-      el('span', { class: 'mini' }, `${ids.length} verse${ids.length === 1 ? '' : 's'}`),
-      STAGES.map((st, i) => c[i] ? el('span', { class: 'mini s' + i, title: `${c[i]} ${st.name.toLowerCase()} · ${st.desc}` }, icon(st.icon), String(c[i])) : null),
-      dueN ? el('span', { class: 'mini', title: `${dueN} due` }, icon('clock'), `${dueN} due`) : null);
+      el('span', { class: 'mini' }, tn(ids.length, '{n} verse', '{n} verses')),
+      STAGES.map((st, i) => c[i] ? el('span', { class: 'mini s' + i, title: `${c[i]} ${st.lower} · ${st.desc}` }, icon(st.icon), String(c[i])) : null),
+      dueN ? el('span', { class: 'mini', title: t('{n} due', { n: dueN }) }, icon('clock'), t('{n} due', { n: dueN })) : null);
   }
   function setProgress(c) {
-    return el('div', { class: 'setprog', title: `${learnedOf(c)} of ${c[0] + c[1] + c[2] + c[3]} learned` }, el('b', null, pctOf(c) + '%'), stageBar(c, true));
+    return el('div', { class: 'setprog', title: t('{a} of {b} learned', { a: learnedOf(c), b: c[0] + c[1] + c[2] + c[3] }) }, el('b', null, pctOf(c) + '%'), stageBar(c, true));
   }
 
   // ---------- learning sessions ----------
   // Sorted by the highest level each way can reach (cap), so they read as a path from new to mastered.
   const MODES = [
-    { id: 'reverse', cap: 2, icon: 'help', name: 'Which verse?', desc: 'Read the text, name the reference, then turn the card.' },
-    { id: 'match', cap: 2, icon: 'link', name: 'Match up', desc: 'Pair each verse with its passage, in rounds of up to five.' },
-    { id: 'lightning', cap: 2, icon: 'bolt', name: 'Lightning round', desc: 'One minute of quick questions. Try to beat your best.' },
-    { id: 'letters', cap: 3, icon: 'letters', name: 'First letters', desc: 'Only the first letter of each word is shown as a hint.' },
-    { id: 'fade', cap: 4, icon: 'fade', name: 'Fading words', desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
-    { id: 'order', cap: 4, icon: 'arrange', name: 'Word order', desc: 'Tap the pieces of the verse in order. They get smaller as you improve.' },
-    { id: 'build', cap: 6, icon: 'build', name: 'Build it up', desc: 'Start from memory, learn one phrase at a time, then say it all.' },
-    { id: 'flip', cap: 6, icon: 'turn', name: 'Flip cards', desc: 'See the reference, say the verse, then turn the card.' }
+    { id: 'reverse', cap: 2, icon: 'help', en: 'Which verse?', en_desc: 'Read the text, name the reference, then turn the card.' },
+    { id: 'match', cap: 2, icon: 'link', en: 'Match up', en_desc: 'Pair each verse with its passage, in rounds of up to five.' },
+    { id: 'lightning', cap: 2, icon: 'bolt', en: 'Lightning round', en_desc: 'One minute of quick questions. Try to beat your best.' },
+    { id: 'letters', cap: 3, icon: 'letters', en: 'First letters', en_desc: 'Only the first letter of each word is shown as a hint.' },
+    { id: 'fade', cap: 4, icon: 'fade', en: 'Fading words', en_desc: 'Words are blanked out. The better you know a verse, the more disappear.' },
+    { id: 'order', cap: 4, icon: 'arrange', en: 'Word order', en_desc: 'Tap the pieces of the verse in order. They get smaller as you improve.' },
+    { id: 'build', cap: 6, icon: 'build', en: 'Build it up', en_desc: 'Start from memory, learn one phrase at a time, then say it all.' },
+    { id: 'flip', cap: 6, icon: 'turn', en: 'Flip cards', en_desc: 'See the reference, say the verse, then turn the card.' }
   ];
   const RATINGS = [
-    { name: 'Not yet', icon: 'again', desc: 'Show it again', points: 0 },
-    { name: 'Shaky', icon: 'wave', desc: 'Needed help', points: 5 },
-    { name: 'Got it', icon: 'check', desc: 'Small slips', points: 10 },
-    { name: 'Perfect', icon: 'sparkle', desc: 'Word for word', points: 15 }
+    { en: 'Not yet', icon: 'again', en_desc: 'Show it again', points: 0 },
+    { en: 'Shaky', icon: 'wave', en_desc: 'Needed help', points: 5 },
+    { en: 'Got it', icon: 'check', en_desc: 'Small slips', points: 10 },
+    { en: 'Perfect', icon: 'sparkle', en_desc: 'Word for word', points: 15 }
   ];
+  [...MODES, ...RATINGS].forEach(x => Object.defineProperties(x, { name: { get: () => t(x.en) }, desc: { get: () => t(x.en_desc) } }));
   const FADE = [0.3, 0.45, 0.6, 0.75, 0.9, 1, 1]; // share of words "Fading words" hides, by box
   let view = 'home';
   let appOn = !cloud; // false while the sign-in screen is shown
@@ -1749,8 +2215,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
   function showSetsError(err) {
     $('syncErr').textContent = err && err.code === 'permission-denied'
-      ? 'Learning sets cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.'
-      : 'Could not save the learning set: ' + (err && err.message || err);
+      ? t('Learning sets cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.')
+      : t('Could not save the learning set: ') + (err && err.message || err);
     $('syncErr').hidden = false;
   }
   const setVerseIds = (st) => st.verseIds.filter(id => verses.some(v => v.id === id));
@@ -1762,18 +2228,18 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       setProgress(c),
       el('button', { type: 'button', class: 'link danger', onclick: () => {
         storeSet(st, true); renderSetup(); renderHome();
-        showUndo(`Deleted the set "${st.name}".`, () => { if (!sets.some(x => x.id === st.id)) { storeSet(st); renderLearn(); renderHome(); } });
-      } }, icon('trash'), 'Delete'));
+        showUndo(t('Deleted the set "{name}".', { name: st.name }), () => { if (!sets.some(x => x.id === st.id)) { storeSet(st); renderLearn(); renderHome(); } });
+      } }, icon('trash'), t('Delete')));
   }
   function saveSelectionAsSet() {
     const name = norm(setName);
-    if (!name) { $('setMsg').textContent = 'Type a name for the set first.'; $('setName').focus(); return; }
-    if (!picked.size) { $('setMsg').textContent = 'Pick some verses first.'; return; }
+    if (!name) { $('setMsg').textContent = t('Type a name for the set first.'); $('setName').focus(); return; }
+    if (!picked.size) { $('setMsg').textContent = t('Pick some verses first.'); return; }
     const existing = sets.find(x => x.name.toLowerCase() === name.toLowerCase());
     const now = new Date().toISOString();
     storeSet(existing ? { ...existing, verseIds: [...picked], updatedAt: now } : { id: uid(), name, verseIds: [...picked], createdAt: now });
     renderSetup();
-    $('setMsg').textContent = existing ? `Updated "${existing.name}".` : `Saved "${name}".`;
+    $('setMsg').textContent = existing ? t('Updated "{name}".', { name: existing.name }) : t('Saved "{name}".', { name });
   }
 
   // Pages: home, board (all verses), add (add or edit a verse), learn, settings. The burger menu switches between them.
@@ -1814,8 +2280,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   // ---------- home ----------
   function flameIcon() { const i = icon('flame'); i.classList.add('flame'); return i; }
   function verseItem(v) {
-    const t = verseTr(v);
-    return el('div', { class: 'vitem' }, el('span', { class: 'ppass' }, passageOf(t)), levelDots(v.id), el('span', { class: 'vt' }, t.text));
+    const tr = verseTr(v);
+    return el('div', { class: 'vitem' }, el('span', { class: 'ppass' }, passageOf(tr)), levelDots(v.id), el('span', { class: 'vt' }, tr.text));
   }
   function renderHome() {
     if (view !== 'home') return;
@@ -1828,36 +2294,36 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const startWith = (ids, m) => { learnMode = m; setView('learn'); startSession(ids, true); };
     let card;
     if (lastVerses.length) {
-      const when = last.at ? new Date(last.at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+      const when = last.at ? new Date(last.at).toLocaleDateString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short' }) : '';
       card = el('section', { class: 'panel lastcard' },
-        el('div', { class: 'learnhead' }, el('h2', null, lastSet ? lastSet.name : 'Your last session'),
+        el('div', { class: 'learnhead' }, el('h2', null, lastSet ? lastSet.name : t('Your last session')),
           el('span', { class: 'count' }, [mode ? mode.name : '', when].filter(Boolean).join(' · '))),
         el('div', { class: 'vlist' }, lastVerses.map(verseItem)),
         el('div', { class: 'row' },
-          el('button', { type: 'button', class: 'primary', onclick: () => startWith(lastSet ? setVerseIds(lastSet) : lastVerses.map(v => v.id), mode ? mode.id : 'flip') }, icon('play'), 'Continue learning'),
-          el('button', { type: 'button', onclick: () => { picked = new Set(lastVerses.map(v => v.id)); setView('learn'); } }, icon('sliders'), 'Change verses or mode')));
+          el('button', { type: 'button', class: 'primary', onclick: () => startWith(lastSet ? setVerseIds(lastSet) : lastVerses.map(v => v.id), mode ? mode.id : 'flip') }, icon('play'), t('Continue learning')),
+          el('button', { type: 'button', onclick: () => { picked = new Set(lastVerses.map(v => v.id)); setView('learn'); } }, icon('sliders'), t('Change verses or mode'))));
     } else if (verses.length) {
       const list = (due.length ? due : verses).slice(0, 5);
       card = el('section', { class: 'panel lastcard' },
-        el('div', { class: 'learnhead' }, el('h2', null, due.length ? 'Ready to learn' : 'Start learning'), el('span', { class: 'count' }, due.length ? `${due.length} due` : '')),
+        el('div', { class: 'learnhead' }, el('h2', null, due.length ? t('Ready to learn') : t('Start learning')), el('span', { class: 'count' }, due.length ? t('{n} due', { n: due.length }) : '')),
         el('div', { class: 'vlist' }, list.map(verseItem)),
-        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'learn' }, icon('play'), 'Start a learning session')));
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'learn' }, icon('play'), t('Start a learning session'))));
     } else {
-      card = el('section', { class: 'panel' }, el('h2', null, icon('book'), 'Welcome'),
-        el('p', { class: 'hint' }, 'Add the first verse you want to memorise.'),
-        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'add' }, icon('plus'), 'Add a verse')));
+      card = el('section', { class: 'panel' }, el('h2', null, icon('book'), t('Welcome')),
+        el('p', { class: 'hint' }, t('Add the first verse you want to memorise.')),
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', 'data-view': 'add' }, icon('plus'), t('Add a verse'))));
     }
     $('home').replaceChildren(
       el('div', { class: 'today' },
-        el('div', { class: 'stat' }, el('b', null, icon('clock'), String(due.length)), el('span', null, 'due today')),
-        el('div', { class: 'stat' }, el('b', null, flameIcon(), String(streak)), el('span', null, streak === 1 ? 'day in a row' : 'days in a row')),
-        el('div', { class: 'stat' }, el('b', null, icon('book'), String(verses.length)), el('span', null, verses.length === 1 ? 'verse' : 'verses'))),
+        el('div', { class: 'stat' }, el('b', null, icon('clock'), String(due.length)), el('span', null, t('due today'))),
+        el('div', { class: 'stat' }, el('b', null, flameIcon(), String(streak)), el('span', null, streak === 1 ? t('day in a row') : t('days in a row'))),
+        el('div', { class: 'stat' }, el('b', null, icon('book'), String(verses.length)), el('span', null, verses.length === 1 ? t('verse') : t('verses')))),
       verses.length ? el('section', { class: 'panel' },
-        el('div', { class: 'learnhead' }, el('h2', null, icon('chart'), 'Your progress'),
-          el('span', { class: 'count' }, `${learnedOf(stageCounts(verses.map(v => v.id)))} of ${verses.length} learned`)),
+        el('div', { class: 'learnhead' }, el('h2', null, icon('chart'), t('Your progress')),
+          el('span', { class: 'count' }, t('{a} of {b} learned', { a: learnedOf(stageCounts(verses.map(v => v.id))), b: verses.length }))),
         progressOverview(verses.map(v => v.id))) : '',
       card,
-      sets.length ? el('section', { class: 'panel' }, el('h2', null, icon('layers'), 'Learning sets'),
+      sets.length ? el('section', { class: 'panel' }, el('h2', null, icon('layers'), t('Learning sets')),
         el('div', { class: 'sets' }, sets.map(st => {
           const ids = setVerseIds(st), c = stageCounts(ids);
           return el('div', { class: 'setrow' },
@@ -1866,9 +2332,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
             setProgress(c));
         }))) : '',
       el('div', { class: 'quick' },
-        el('button', { type: 'button', 'data-view': 'learn' }, icon('cards'), 'Learn'),
-        el('button', { type: 'button', 'data-view': 'board' }, icon('book'), 'All verses'),
-        el('button', { type: 'button', 'data-view': 'add' }, icon('plus'), 'Add a verse'))
+        el('button', { type: 'button', 'data-view': 'learn' }, icon('cards'), t('Learn')),
+        el('button', { type: 'button', 'data-view': 'board' }, icon('book'), t('All verses')),
+        el('button', { type: 'button', 'data-view': 'add' }, icon('plus'), t('Add a verse')))
     );
   }
 
@@ -1887,18 +2353,19 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   const shuffle = (list) => { const a = [...list]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
   // Recognising a verse is easier than saying it, so the quick ways only raise a verse part of the way.
-  const capText = (cap) => cap >= MAX_BOX ? 'Can take a verse to Mastered' : `Raises levels up to ${cap}` + (cap === 2 ? ' (Learning)' : cap === 4 ? ' (Learned)' : '');
+  const capText = (cap) => cap >= MAX_BOX ? t('Can take a verse to Mastered') : t('Raises levels up to {n}', { n: cap }) + (cap === 2 || cap === 4 ? ` (${STAGES[capStage(cap)].name})` : '');
   const capStage = (cap) => stageOfEntry({ box: cap });
   // Small badge on each way of learning: the highest level it can raise a verse to, in that level's stage colour.
-  const capBadge = (cap) => el('small', { class: 'mcap s' + capStage(cap), title: capText(cap) }, icon('arrowup'), `up to level ${cap}`);
-  const capHigher = (cap) => { const up = MODES.filter(m => m.cap > cap).map(m => m.name); return `To go higher, use ${up.slice(0, -1).join(', ')}${up.length > 1 ? ' or ' : ''}${up[up.length - 1]}.`; };
+  const capBadge = (cap) => el('small', { class: 'mcap s' + capStage(cap), title: capText(cap) }, icon('arrowup'), t('up to level {n}', { n: cap }));
+  const capHigher = (cap) => { const up = MODES.filter(m => m.cap > cap).map(m => m.name); return t('To go higher, use {list}.', { list: up.slice(0, -1).join(', ') + (up.length > 1 ? ' ' + t('or') + ' ' : '') + up[up.length - 1] }); };
+
   const capDots = (cap) => el('span', { class: 'capdots' }, Array.from({ length: MAX_BOX }, (_, i) => el('i', { class: i < cap ? 's' + capStage(i + 1) : '' })));
   function renderSetup() {
     const root = $('learn');
     const prevScroll = (root.querySelector('.picklist') || {}).scrollTop || 0;
     const focusId = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.pick;
     if (!verses.length) {
-      root.replaceChildren(el('section', { class: 'panel' }, el('h2', null, 'Start a learning session'), el('div', { class: 'empty' }, 'Add some verses to the board first.')));
+      root.replaceChildren(el('section', { class: 'panel' }, el('h2', null, t('Start a learning session')), el('div', { class: 'empty' }, t('Add some verses to the board first.'))));
       return;
     }
     const due = verses.filter(v => isDue(v.id));
@@ -1909,71 +2376,71 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const trs = allTranslations();
     if (learnTr && !trs.includes(learnTr)) learnTr = '';
     const trSelect = el('select', { id: 'learnTr', onchange: (e) => { learnTr = e.target.value; renderSetup(); } },
-      el('option', { value: '' }, 'Favourite translation of each verse'), trs.map(t => el('option', { value: t }, t)));
+      el('option', { value: '' }, t('Favourite translation of each verse')), trs.map(tr => el('option', { value: tr }, tr)));
     trSelect.value = learnTr;
     const shuffleBox = el('input', { type: 'checkbox', onchange: (e) => { learnShuffle = e.target.checked; } });
     shuffleBox.checked = learnShuffle;
-    const allBox = el('input', { type: 'checkbox', 'data-pick': '*', 'aria-label': 'Select all verses', onchange: (e) => setPicked(e.target.checked ? verses : []) });
+    const allBox = el('input', { type: 'checkbox', 'data-pick': '*', 'aria-label': t('Select all verses'), onchange: (e) => setPicked(e.target.checked ? verses : []) });
     allBox.checked = picked.size === verses.length;
     allBox.indeterminate = picked.size > 0 && picked.size < verses.length;
     const n = picked.size, minPick = learnMode === 'match' ? 2 : 1;
     const sameAsPicked = (st) => { const ids = setVerseIds(st); return ids.length === picked.size && ids.every(id => picked.has(id)); };
     const activeSet = n ? sets.find(sameAsPicked) : null;
     const typedSet = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase());
-    const nameInput = el('input', { type: 'text', id: 'setName', placeholder: 'Name, e.g. Advent 2026', autocomplete: 'off', 'aria-label': 'Name of the learning set',
-      oninput: (e) => { setName = e.target.value; const t = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase()); setLabel($('btnSaveSet'), t ? 'Update set' : 'Save as set'); $('setMsg').textContent = ''; },
+    const nameInput = el('input', { type: 'text', id: 'setName', placeholder: t('Name, e.g. Advent 2026'), autocomplete: 'off', 'aria-label': t('Name of the learning set'),
+      oninput: (e) => { setName = e.target.value; const found = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase()); setLabel($('btnSaveSet'), found ? t('Update set') : t('Save as set')); $('setMsg').textContent = ''; },
       onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); saveSelectionAsSet(); } } });
     nameInput.value = setName;
     const typing = document.activeElement && document.activeElement.id === 'setName' ? document.activeElement.selectionStart : null;
     root.replaceChildren(el('section', { class: 'panel' },
       el('div', { class: 'learnhead' },
-        el('h2', null, icon('cards'), 'Start a learning session'),
-        streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null,
-        el('button', { type: 'button', class: 'link helpbtn', onclick: () => openTutorial(0) }, icon('info'), 'How learning works')),
+        el('h2', null, icon('cards'), t('Start a learning session')),
+        streak ? el('span', { class: 'count' }, tn(streak, '{n} day in a row', '{n} days in a row')) : null,
+        el('button', { type: 'button', class: 'link helpbtn', onclick: () => openTutorial(0) }, icon('info'), t('How learning works'))),
       el('div', { class: 'field' },
-        el('div', { class: 'lab' }, 'Learning sets'),
+        el('div', { class: 'lab' }, t('Learning sets')),
         sets.length
           ? el('div', { class: 'sets' }, sets.map(st => setRow(st, activeSet && activeSet.id === st.id)))
-          : el('p', { class: 'hint' }, 'No sets yet. Pick verses below and save them as a set to focus on them over several days.')
+          : el('p', { class: 'hint' }, t('No sets yet. Pick verses below and save them as a set to focus on them over several days.'))
       ),
       el('div', { class: 'field' },
-        el('div', { class: 'lab' }, 'Verses'),
+        el('div', { class: 'lab' }, t('Verses')),
         el('div', { class: 'filters' },
-          el('button', { type: 'button', class: 'chip suggest', onclick: () => { pickOpen = false; setPicked(due); } }, icon('clock'), `Due now · ${due.length}`),
-          tagCounts().map(([t, c]) => {
-            const tagged = verses.filter(v => v.tags.includes(t));
+          el('button', { type: 'button', class: 'chip suggest', onclick: () => { pickOpen = false; setPicked(due); } }, icon('clock'), `${t('Due now')} · ${due.length}`),
+          tagCounts().map(([tag, c]) => {
+            const tagged = verses.filter(v => v.tags.includes(tag));
             const all = tagged.every(v => picked.has(v.id));
-            return el('button', { type: 'button', class: 'chip' + (all ? ' on' : ' suggest'), 'aria-pressed': String(all), title: (all ? 'Remove' : 'Add') + ' the verses tagged ' + t,
-              onclick: () => { tagged.forEach(v => all ? picked.delete(v.id) : picked.add(v.id)); renderSetup(); } }, `${t} · ${c}`);
+            return el('button', { type: 'button', class: 'chip' + (all ? ' on' : ' suggest'), 'aria-pressed': String(all), title: all ? t('Remove the verses tagged {tag}', { tag }) : t('Add the verses tagged {tag}', { tag }),
+              onclick: () => { tagged.forEach(v => all ? picked.delete(v.id) : picked.add(v.id)); renderSetup(); } }, `${tag} · ${c}`);
           })
         ),
-        !pickOpen ? el('div', { class: 'pickfold' }, el('span', null, `${n} of ${verses.length} verses selected`),
-          el('button', { type: 'button', class: 'link', onclick: () => { pickOpen = true; renderSetup(); } }, icon('down'), 'Show the list')) :
+        !pickOpen ? el('div', { class: 'pickfold' }, el('span', null, t('{a} of {b} verses selected', { a: n, b: verses.length })),
+          el('button', { type: 'button', class: 'link', onclick: () => { pickOpen = true; renderSetup(); } }, icon('down'), t('Show the list'))) :
         el('div', { class: 'picklist' }, el('label', { class: 'pick pickall' }, allBox,
-          el('span', { class: 'ppass' }, n === verses.length ? 'Deselect all' : 'Select all'),
-          el('span', { class: 'due' }, `${n} of ${verses.length} selected`)), verses.map(v => {
-          const t = verseTr(v);
+          el('span', { class: 'ppass' }, n === verses.length ? t('Deselect all') : t('Select all')),
+          el('span', { class: 'due' }, t('{a} of {b} selected', { a: n, b: verses.length }))), verses.map(v => {
+          const tr = verseTr(v);
           const cb = el('input', { type: 'checkbox', 'data-pick': v.id, onchange: (e) => { if (e.target.checked) picked.add(v.id); else picked.delete(v.id); renderSetup(); } });
           cb.checked = picked.has(v.id);
-          return el('label', { class: 'pick' }, cb, el('span', { class: 'ppass' }, passageOf(t)), el('span', { class: 'ptext' }, t.text), el('span', { class: 'due' }, dueLabel(v.id)), levelDots(v.id));
+          return el('label', { class: 'pick' }, cb, el('span', { class: 'ppass' }, passageOf(tr)), el('span', { class: 'ptext' }, tr.text), el('span', { class: 'due' }, dueLabel(v.id)), levelDots(v.id));
         })),
         el('div', { class: 'row savesets' }, nameInput,
-          el('button', { type: 'button', id: 'btnSaveSet', onclick: saveSelectionAsSet }, icon('bookmark'), typedSet ? 'Update set' : 'Save as set'),
+          el('button', { type: 'button', id: 'btnSaveSet', onclick: saveSelectionAsSet }, icon('bookmark'), typedSet ? t('Update set') : t('Save as set')),
           el('span', { id: 'setMsg', class: 'hint', 'aria-live': 'polite' }))
       ),
       el('div', { class: 'field' },
-        el('div', { class: 'row' }, el('div', { class: 'lab' }, 'Way of learning'),
-          el('button', { type: 'button', class: 'link', onclick: () => openTutorial(firstModeSlide() + Math.max(0, MODES.findIndex(m => m.id === learnMode))) }, icon('info'), 'How this way works')),
-        el('div', { class: 'modes', role: 'radiogroup', 'aria-label': 'Way of learning' }, MODES.map(m =>
+        el('div', { class: 'row' }, el('div', { class: 'lab' }, t('Way of learning')),
+          el('button', { type: 'button', class: 'link', onclick: () => openTutorial(firstModeSlide() + Math.max(0, MODES.findIndex(m => m.id === learnMode))) }, icon('info'), t('How this way works'))),
+        el('div', { class: 'modes', role: 'radiogroup', 'aria-label': t('Way of learning') }, MODES.map(m =>
           el('button', { type: 'button', class: 'mode' + (learnMode === m.id ? ' on' : ''), role: 'radio', 'aria-checked': String(learnMode === m.id), onclick: () => { learnMode = m.id; renderSetup(); } },
             el('strong', null, icon(m.icon), m.name), el('span', null, m.desc), capBadge(m.cap))))
       ),
       el('div', { class: 'row' },
-        el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
-        el('label', { class: 'check' }, shuffleBox, 'Shuffle the order')
+        el('label', { class: 'lab', for: 'learnTr' }, t('Translation')), trSelect,
+        el('label', { class: 'check' }, shuffleBox, t('Shuffle the order'))
       ),
       el('div', { class: 'startbar' }, el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked], true) }, icon('play'),
-        n < minPick ? (minPick === 2 ? 'Pick at least two verses to match' : 'Pick at least one verse') : `Start with ${n} verse${n === 1 ? '' : 's'}`))
+        n < minPick ? (minPick === 2 ? t('Pick at least two verses to match') : t('Pick at least one verse')) : tn(n, 'Start with {n} verse', 'Start with {n} verses')))
     ));
     if (n < minPick) $('btnStart').disabled = true;
     if (root.querySelector('.picklist')) root.querySelector('.picklist').scrollTop = prevScroll;
@@ -2068,41 +2535,42 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   const firstLetters = (text) => tokenize(text).map(tk => tk.pre + (tk.core ? [...tk.core][0] : '') + tk.post).join('');
 
   function cardFaces(v) {
-    const t = cardTr(v);
-    const ref = passageOf(t) + (t.translation ? ' · ' + t.translation : '');
-    const text = () => el('div', { class: 'vtxt' }, renderText(t.text, t.highlights || []));
-    const tap = el('div', { class: 'tap' }, 'Tap the card to turn it around');
+    const tr = cardTr(v);
+    const ref = passageOf(tr) + (tr.translation ? ' · ' + tr.translation : '');
+    const text = () => el('div', { class: 'vtxt' }, renderText(tr.text, tr.highlights || []));
+    const tap = el('div', { class: 'tap' }, t('Tap the card to turn it around'));
     switch (session.mode) {
       case 'reverse': return [
-        [el('div', { class: 'kicker' }, 'Which passage is this?'), text(), tap],
-        [el('div', { class: 'big' }, passageOf(t)), t.translation ? el('div', { class: 'kicker' }, t.translation) : null, el('div', { class: 'vtxt soft' }, t.text)]
+        [el('div', { class: 'kicker' }, t('Which passage is this?')), text(), tap],
+        [el('div', { class: 'big' }, passageOf(tr)), tr.translation ? el('div', { class: 'kicker' }, tr.translation) : null, el('div', { class: 'vtxt soft' }, tr.text)]
       ];
       case 'letters': return [
-        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt letters' }, firstLetters(t.text)), tap],
+        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt letters' }, firstLetters(tr.text)), tap],
         [el('div', { class: 'kicker' }, ref), text()]
       ];
       case 'fade': return [
-        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt' }, fadedText(t.text, false)), tap],
-        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt' }, fadedText(t.text, true))]
+        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt' }, fadedText(tr.text, false)), tap],
+        [el('div', { class: 'kicker' }, ref), el('div', { class: 'vtxt' }, fadedText(tr.text, true))]
       ];
       default: return [
-        [el('div', { class: 'kicker' }, 'Say the verse'), el('div', { class: 'big' }, passageOf(t)), t.translation ? el('div', { class: 'kicker' }, t.translation) : null, tap],
+        [el('div', { class: 'kicker' }, t('Say the verse')), el('div', { class: 'big' }, passageOf(tr)), tr.translation ? el('div', { class: 'kicker' }, tr.translation) : null, tap],
         [el('div', { class: 'kicker' }, ref), text()]
       ];
     }
   }
   function learnControls() {
     if (!session.revealed) return el('div', { class: 'learnctl' },
-      el('button', { type: 'button', class: 'primary', onclick: turn }, icon('turn'), 'Turn around'));
+      el('button', { type: 'button', class: 'primary', onclick: turn }, icon('turn'), t('Turn around')));
     return el('div', { class: 'learnctl' },
-      el('div', { class: 'lab' }, 'How well did you know it?'),
+      el('div', { class: 'lab' }, t('How well did you know it?')),
       el('div', { class: 'rate' }, RATINGS.map((r, i) =>
         el('button', { type: 'button', class: 'r' + i, onclick: () => rate(i) }, icon(r.icon), r.name, el('span', null, r.desc)))));
   }
   const STAGED = ['order', 'build']; // modes shown on a card that does not turn
   const KEYS = {
     order: 'Keyboard: Enter goes on to the next verse.',
-    build: 'Keyboard: Space goes on, 1 to 4 rate the verse at the end.'
+    build: 'Keyboard: Space goes on, 1 to 4 rate the verse at the end.',
+    lightning: 'Keyboard: 1 to 4 pick an answer.'
   };
   function renderSession() {
     if (session.mode === 'match' && !session.finished) return renderMatch();
@@ -2117,30 +2585,30 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (staged) card = el('div', { class: 'face stage' }, stageFace(v));
     else {
       const [front, back] = cardFaces(v);
-      card = el('div', { class: 'flip' + (s.turned ? ' turned' : ''), role: 'button', tabindex: '0', 'aria-label': 'Turn the card around', onclick: turn },
+      card = el('div', { class: 'flip' + (s.turned ? ' turned' : ''), role: 'button', tabindex: '0', 'aria-label': t('Turn the card around'), onclick: turn },
         el('div', { class: 'flip-inner' },
           el('div', { class: 'face front', 'aria-hidden': String(s.turned) }, front),
           el('div', { class: 'face back', 'aria-hidden': String(!s.turned) }, back)));
     }
     $('learn').replaceChildren(
       el('div', { class: 'hud' },
-        el('span', null, 'Card ', el('b', null, String(s.idx + 1)), ` of ${s.queue.length}`),
-        el('span', null, el('b', null, String(s.points)), ' points', s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
-        el('span', null, s.streak >= 2 ? `${s.streak} in a row` : ''),
-        el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), 'End session')),
+        el('span', null, rich(t('Card **{a}** of {b}', { a: s.idx + 1, b: s.queue.length }))),
+        el('span', null, el('b', null, String(s.points)), ' ' + t('points'), s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
+        el('span', null, s.streak >= 2 ? t('{n} in a row', { n: s.streak }) : ''),
+        el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), t('End session'))),
       el('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(s.queue.length), 'aria-valuenow': String(s.idx) },
         el('div', { style: `width:${Math.round(100 * s.idx / s.queue.length)}%` })),
       card,
       // The pieces of "Word order" belong to one translation, so it cannot change midway.
-      v.translations.length > 1 && s.mode !== 'order' ? el('div', { class: 'trswitch', role: 'group', 'aria-label': 'Show another translation' },
-        v.translations.map((t, i) => {
-          const on = t === cardTr(v);
+      v.translations.length > 1 && s.mode !== 'order' ? el('div', { class: 'trswitch', role: 'group', 'aria-label': t('Show another translation') },
+        v.translations.map((tr, i) => {
+          const on = tr === cardTr(v);
           return el('button', { type: 'button', class: 'chip' + (on ? ' on' : ' suggest'), 'aria-pressed': String(on),
             onclick: () => { s.trIdx = i; setupCard(); renderSession(); } },
-            versionLabel(t, i), t.favorite ? el('span', { class: 'star on' }, starIcon(true)) : null);
+            versionLabel(tr, i), tr.favorite ? el('span', { class: 'star on' }, starIcon(true)) : null);
         })) : '',
       el('div', { id: 'learnCtl' }, staged ? stageControls() : learnControls()),
-      el('p', { class: 'keys' }, KEYS[s.mode] || 'Keyboard: Space turns the card, 1 to 4 rate it.')
+      el('p', { class: 'keys' }, t(KEYS[s.mode] || 'Keyboard: Space turns the card, 1 to 4 rate it.'))
     );
   }
   // Turns the card in place, so the flip animates.
@@ -2185,18 +2653,18 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
 
   // ---------- "Word order" and "Build it up" ----------
   function stageFace(v) {
-    const s = session, t = cardTr(v);
-    const ref = passageOf(t) + (t.translation ? ' · ' + t.translation : '');
-    const full = () => el('div', { class: 'vtxt' }, renderText(t.text, t.highlights || []));
+    const s = session, tr = cardTr(v);
+    const ref = passageOf(tr) + (tr.translation ? ' · ' + tr.translation : '');
+    const full = () => el('div', { class: 'vtxt' }, renderText(tr.text, tr.highlights || []));
     if (s.mode === 'build') {
       const n = s.parts.length;
       if (s.revealed) return [el('div', { class: 'kicker' }, ref), full()];
-      if (s.step < 0) return [el('div', { class: 'kicker' }, 'From memory'), el('div', { class: 'big' }, passageOf(t)), t.translation ? el('div', { class: 'kicker' }, t.translation) : null,
-        el('div', { class: 'tap' }, 'How does it begin? Say as much as you can before you see any words')];
-      if (s.step >= n) return [el('div', { class: 'kicker' }, 'Now say the whole verse'), el('div', { class: 'big' }, passageOf(t)), t.translation ? el('div', { class: 'kicker' }, t.translation) : null];
-      return [el('div', { class: 'kicker' }, `${ref} · Phrase ${s.step + 1} of ${n}`),
+      if (s.step < 0) return [el('div', { class: 'kicker' }, t('From memory')), el('div', { class: 'big' }, passageOf(tr)), tr.translation ? el('div', { class: 'kicker' }, tr.translation) : null,
+        el('div', { class: 'tap' }, t('How does it begin? Say as much as you can before you see any words'))];
+      if (s.step >= n) return [el('div', { class: 'kicker' }, t('Now say the whole verse')), el('div', { class: 'big' }, passageOf(tr)), tr.translation ? el('div', { class: 'kicker' }, tr.translation) : null];
+      return [el('div', { class: 'kicker' }, `${ref} · ${t('Phrase {a} of {b}', { a: s.step + 1, b: n })}`),
         el('div', { class: 'vtxt' }, s.step ? el('span', { class: 'cue' }, firstLetters(s.parts.slice(0, s.step).join(' ')) + ' ') : null, el('span', { class: 'now' }, s.parts[s.step])),
-        el('div', { class: 'tap' }, s.step ? 'Say it from the start, with the new phrase' : 'Check yourself, then read the phrase aloud a few times')];
+        el('div', { class: 'tap' }, s.step ? t('Say it from the start, with the new phrase') : t('Check yourself, then read the phrase aloud a few times'))];
     }
     if (s.result != null) return [el('div', { class: 'kicker' }, ref), full()];
     const sofar = s.parts.slice(0, s.placed).join(' ');
@@ -2208,16 +2676,16 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       if (s.revealed) return learnControls();
       const n = s.parts.length;
       return el('div', { class: 'learnctl' }, el('button', { type: 'button', class: 'primary', onclick: buildStep },
-        s.step < 0 ? [icon('turn'), 'Show the first phrase'] : s.step < n - 1 ? [icon('next'), 'Next phrase'] : s.step === n - 1 ? [icon('play'), 'Say the whole verse'] : [icon('turn'), 'Show the verse']));
+        s.step < 0 ? [icon('turn'), t('Show the first phrase')] : s.step < n - 1 ? [icon('next'), t('Next phrase')] : s.step === n - 1 ? [icon('play'), t('Say the whole verse')] : [icon('turn'), t('Show the verse')]));
     }
     if (s.result != null) {
       const last = s.idx === s.queue.length - 1 && s.result !== 0;
       return el('div', { class: 'learnctl' },
-        el('p', { class: 'result r' + s.result }, (s.slips ? `${s.slips} slip${s.slips === 1 ? '' : 's'}` : 'No slips') + ' · ' + RATINGS[s.result].name),
-        el('button', { type: 'button', class: 'primary', onclick: nextCard }, icon(last ? 'check' : 'next'), last ? 'See results' : 'Next verse'));
+        el('p', { class: 'result r' + s.result }, (s.slips ? tn(s.slips, '{n} slip', '{n} slips') : t('No slips')) + ' · ' + RATINGS[s.result].name),
+        el('button', { type: 'button', class: 'primary', onclick: nextCard }, icon(last ? 'check' : 'next'), last ? t('See results') : t('Next verse')));
     }
     return el('div', { class: 'learnctl' },
-      el('div', { class: 'lab' }, s.placed ? 'Tap the next piece' : 'Tap the first piece'),
+      el('div', { class: 'lab' }, s.placed ? t('Tap the next piece') : t('Tap the first piece')),
       el('div', { class: 'pieces' }, s.pool.map(i => el('button', { type: 'button', class: 'piece' + (s.wrong === i ? ' wrong' : ''), onclick: () => orderTap(i) }, s.parts[i]))));
   }
   // A finished verse is rated by its slips: none is "Got it", one or two "Shaky", more "Not yet".
@@ -2318,19 +2786,19 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (!q) { s.finished = true; return renderSession(); }
     const left = s.endsAt - Date.now();
     const body = q.kind === 'which'
-      ? [el('div', { class: 'kicker' }, 'Which passage is this?'), el('div', { class: 'vtxt' }, q.t.text)]
-      : [el('div', { class: 'kicker' }, 'How does it begin?'), el('div', { class: 'big' }, passageOf(q.t))];
+      ? [el('div', { class: 'kicker' }, t('Which passage is this?')), el('div', { class: 'vtxt' }, q.t.text)]
+      : [el('div', { class: 'kicker' }, t('How does it begin?')), el('div', { class: 'big' }, passageOf(q.t))];
     $('learn').replaceChildren(
       el('div', { class: 'hud' },
         el('span', { class: 'clock' }, icon('clock'), el('b', { id: 'lnTime' }, clockText(left))),
-        el('span', null, el('b', null, String(s.points)), ' points', s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
-        el('span', null, el('b', null, String(s.right)), ' right'),
-        el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), 'End session')),
+        el('span', null, el('b', null, String(s.points)), ' ' + t('points'), s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
+        el('span', null, el('b', null, String(s.right)), ' ' + t('right')),
+        el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), t('End session'))),
       el('div', { class: 'bar', role: 'presentation' }, el('div', { id: 'lnBar', class: 'live', style: `width:${barWidth(s)}` })),
       el('div', { class: 'face stage' }, body),
       el('div', { class: 'opts two' }, q.options.map(o =>
         el('button', { type: 'button', class: 'opt' + (f && o === q.answer ? ' right' : '') + (f === o && o !== q.answer ? ' wrong' : ''), onclick: () => lightningPick(o) }, o))),
-      el('p', { class: 'keys' }, 'Keyboard: 1 to 4 pick an answer.')
+      el('p', { class: 'keys' }, t(KEYS.lightning))
     );
   }
   // A right answer counts as "Got it" for the verse, a wrong one as "Shaky" without points.
@@ -2388,30 +2856,30 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const roundDone = s.doneText.size === s.texts.length;
     const last = s.round === s.rounds.length - 1;
     const item = (kind, id) => {
-      const t = verseTr(verses.find(v => v.id === id));
+      const tr = verseTr(verses.find(v => v.id === id));
       const done = (kind === 'text' ? s.doneText : s.doneRef).has(id);
       const cls = 'mitem m' + kind + (done ? ' done' : '') + (s.pick && s.pick.kind === kind && s.pick.id === id ? ' sel' : '')
         + (s.wrong && s.wrong[kind === 'text' ? 0 : 1] === id ? ' wrong' : '');
-      const b = el('button', { type: 'button', class: cls, onclick: () => matchTap(kind, id) }, kind === 'text' ? el('span', null, t.text) : passageOf(t));
+      const b = el('button', { type: 'button', class: cls, onclick: () => matchTap(kind, id) }, kind === 'text' ? el('span', null, tr.text) : passageOf(tr));
       if (done) b.disabled = true;
       return b;
     };
     $('learn').replaceChildren(
       el('div', { class: 'hud' },
-        el('span', null, 'Round ', el('b', null, String(s.round + 1)), ` of ${s.rounds.length}`),
-        el('span', null, el('b', null, String(s.points)), ' points', s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
-        el('span', null, s.streak >= 2 ? `${s.streak} in a row` : ''),
-        el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), 'End session')),
+        el('span', null, rich(t('Round **{a}** of {b}', { a: s.round + 1, b: s.rounds.length }))),
+        el('span', null, el('b', null, String(s.points)), ' ' + t('points'), s.gain ? el('span', { class: 'gain' }, ` +${s.gain}`) : null),
+        el('span', null, s.streak >= 2 ? t('{n} in a row', { n: s.streak }) : ''),
+        el('button', { type: 'button', class: 'link', onclick: endSession }, icon('x'), t('End session'))),
       el('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(total), 'aria-valuenow': String(doneBefore + s.doneText.size) },
         el('div', { style: `width:${Math.round(100 * (doneBefore + s.doneText.size) / total)}%` })),
-      el('p', { class: 'hint' }, 'Tap a verse, then the passage it belongs to.'),
+      el('p', { class: 'hint' }, t('Tap a verse, then the passage it belongs to.')),
       el('div', { class: 'match' },
-        el('div', { class: 'mcol', 'aria-label': 'Verses' }, s.texts.map(id => item('text', id))),
-        el('div', { class: 'mcol', 'aria-label': 'Passages' }, s.refs.map(id => item('ref', id)))),
+        el('div', { class: 'mcol', 'aria-label': t('Verses') }, s.texts.map(id => item('text', id))),
+        el('div', { class: 'mcol', 'aria-label': t('Passages') }, s.refs.map(id => item('ref', id)))),
       roundDone ? el('div', { class: 'learnctl' }, el('button', { type: 'button', class: 'primary', onclick: () => {
         if (last) { s.finished = true; renderSession(); }
         else { s.round++; startRound(); renderMatch(); window.scrollTo({ top: 0 }); }
-      } }, icon(last ? 'check' : 'next'), last ? 'See results' : 'Next round')) : ''
+      } }, icon(last ? 'check' : 'next'), last ? t('See results') : t('Next round'))) : ''
     );
   }
 
@@ -2435,10 +2903,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const again = [...s.first].filter(([, r]) => r <= 1).map(([id]) => id);
     const streak = dayStreak();
     $('learn').replaceChildren(el('section', { class: 'panel' },
-      el('div', { class: 'learnhead' }, el('h2', null, icon('sparkle'), 'Session complete'), streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null),
-      el('div', null, el('div', { class: 'score' }, String(s.points)), el('div', { class: 'hint' }, `points · best run ${s.best} in a row`)),
-      s.mode === 'lightning' ? el('p', { class: 'hint' }, `${s.right} of ${s.asked} answers right in one minute · `,
-        s.right > s.prevBest ? el('b', null, 'a new personal best') : `your best is ${s.prevBest}`) : null,
+      el('div', { class: 'learnhead' }, el('h2', null, icon('sparkle'), t('Session complete')), streak ? el('span', { class: 'count' }, tn(streak, '{n} day in a row', '{n} days in a row')) : null),
+      el('div', null, el('div', { class: 'score' }, String(s.points)), el('div', { class: 'hint' }, t('points · best run {n} in a row', { n: s.best }))),
+      s.mode === 'lightning' ? el('p', { class: 'hint' }, t('{a} of {b} answers right in one minute', { a: s.right, b: s.asked }) + ' · ',
+        s.right > s.prevBest ? el('b', null, t('a new personal best')) : t('your best is {n}', { n: s.prevBest })) : null,
       el('div', { class: 'stats' }, RATINGS.map((r, i) => el('div', { class: 'stat' }, el('b', null, String(counts[i])), el('span', null, r.name)))),
       sessionProgress(s),
       el('div', { class: 'results' }, [...s.first].map(([id, r]) => {
@@ -2446,10 +2914,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         return v ? el('div', null, el('span', { class: 'ppass' }, passageOf(verseTr(v))), el('span', { class: 'due' }, RATINGS[r].name), levelChange(s, id), levelDots(id)) : null;
       })),
       el('div', { class: 'row' },
-        again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, icon('again'), `Practise the ${again.length} tricky one${again.length === 1 ? '' : 's'} again`) : null,
-        el('button', { type: 'button', onclick: () => startSession([...s.first.keys()]) }, icon('turn'), 'Same verses again'),
-        el('button', { type: 'button', onclick: () => { session = null; picked = null; pickOpen = true; renderSetup(); } }, icon('sliders'), 'New session'),
-        el('button', { type: 'button', onclick: () => { session = null; setView('home'); } }, icon('check'), 'Done'))
+        again.length ? el('button', { type: 'button', class: 'primary', onclick: () => startSession(again) }, icon('again'), tn(again.length, 'Practise the tricky one again', 'Practise the {n} tricky ones again')) : null,
+        el('button', { type: 'button', onclick: () => startSession([...s.first.keys()]) }, icon('turn'), t('Same verses again')),
+        el('button', { type: 'button', onclick: () => { session = null; picked = null; pickOpen = true; renderSetup(); } }, icon('sliders'), t('New session')),
+        el('button', { type: 'button', onclick: () => { session = null; setView('home'); } }, icon('check'), t('Done')))
     ));
   }
   function arrowIcon() { const i = icon('next'); i.classList.add('arrow'); return i; }
@@ -2458,8 +2926,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   function levelChange(s, id) {
     const b = boxBefore(s, id), a = boxOf(id);
     const dir = a > b ? 'up' : a < b ? 'down' : '';
-    const why = !s.limited.has(id) ? '' : dailyLimitReached(id) || a >= b + DAILY_RISE ? ' (daily limit)' : ` (${(MODES.find(m => m.id === s.mode) || {}).name} raises levels up to ${a})`;
-    return el('span', { class: 'lvchg ' + dir, title: `Level ${b} before, ${a} now` }, dir ? icon(dir === 'up' ? 'arrowup' : 'arrowdown') : null, `Level ${b} → ${a}${why}`);
+    const why = !s.limited.has(id) ? '' : dailyLimitReached(id) || a >= b + DAILY_RISE ? ` (${t('daily limit')})` : ` (${t('{mode} raises levels up to {n}', { mode: (MODES.find(m => m.id === s.mode) || {}).name, n: a })})`;
+    return el('span', { class: 'lvchg ' + dir, title: t('Level {a} before, {b} now', { a: b, b: a }) }, dir ? icon(dir === 'up' ? 'arrowup' : 'arrowdown') : null, `${t('Level {a} → {b}', { a: b, b: a })}${why}`);
   }
   // Before and after: levels gained, verses learned and mastered, and the share learned of all verses and of the set.
   function sessionProgress(s) {
@@ -2476,24 +2944,25 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       const pb = pctOf(b), pa = pctOf(a);
       return el('div', { class: 'scope' }, progressRing(a, true),
         el('div', { class: 'sname' }, el('strong', null, name), stageBar(a, true)),
-        el('span', { class: 'pcts', title: `${pb}% learned before, ${pa}% now` }, el('span', { class: 'was' }, pb + '%'), icon('next'),
+        el('span', { class: 'pcts', title: t('{a}% learned before, {b}% now', { a: pb, b: pa }) }, el('span', { class: 'was' }, pb + '%'), icon('next'),
           el('b', { class: pa > pb ? 'up' : pa < pb ? 'down' : '' }, pa + '%')));
     };
     const st = s.setId && sets.find(x => x.id === s.setId);
     const lv = el('div', { class: 'delta' + (levels > 0 ? ' good' : '') },
       el('b', null, icon('trend'), el('span', { class: levels > 0 ? 'up' : levels < 0 ? 'down' : '' }, (levels > 0 ? '+' : '') + levels)),
-      el('span', null, Math.abs(levels) === 1 ? 'level' : 'levels'));
+      el('span', null, Math.abs(levels) === 1 ? t('level') : t('levels')));
     return el('div', { class: 'scopes' },
-      el('h3', { class: 'subhead' }, 'Your progress'),
+      el('h3', { class: 'subhead' }, t('Your progress')),
       el('div', { class: 'deltas' }, lv,
-        delta('s2', 'learned', learnedOf(was), learnedOf(now), 'learned', learnedOf(now) > learnedOf(was)),
-        delta('s3', 'trophy', was[3], now[3], 'mastered', now[3] > was[3])),
+        delta('s2', 'learned', learnedOf(was), learnedOf(now), t('learned'), learnedOf(now) > learnedOf(was)),
+        delta('s3', 'trophy', was[3], now[3], t('mastered'), now[3] > was[3])),
       el('div', { class: 'compare' },
-        el('span', null, 'Before'), stageBar(was), el('b', null, pctOf(was) + '%'),
-        el('span', null, 'After'), stageBar(now), el('b', null, pctOf(now) + '%')),
+        el('span', null, t('Before')), stageBar(was), el('b', null, pctOf(was) + '%'),
+        el('span', null, t('After')), stageBar(now), el('b', null, pctOf(now) + '%')),
       el('div', { class: 'minis' }, STAGES.map((x, i) => el('span', { class: 'mini s' + i }, icon(x.icon), x.name))),
       st ? scope(st.name, setVerseIds(st)) : null,
-      scope('All verses', verses.map(v => v.id)));
+      scope(t('All verses'), verses.map(v => v.id)));
+
   }
   document.addEventListener('keydown', (e) => {
     if (view !== 'learn' || !session || session.finished || session.mode === 'match' || $('tutorial').open || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -2508,185 +2977,200 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   // ---------- "How learning works": slides with small demos that play in a loop ----------
   // Opens by itself the first time someone opens the Learn page on a device; later from the menu or the Learn page.
   const TUTORIAL_KEY = 'verseBoard.tutorialSeen.v1';
-  const DEMO = { ref: 'Psalm 119:105', text: 'Your word is a lamp to my feet and a light to my path.', parts: ['Your word is a lamp', 'to my feet', 'and a light', 'to my path.'] };
-  const demoFlip = (front, back) => () => {
-    const card = el('div', { class: 'flip' }, el('div', { class: 'flip-inner' }, el('div', { class: 'face front' }, front), el('div', { class: 'face back' }, back)));
-    const cap = el('div', { class: 'cap' });
-    return { node: [card, cap], frames: 4, show: (f) => {
-      card.classList.toggle('turned', f >= 2);
-      cap.replaceChildren(...(f < 2 ? ['Say it from memory, then tap to turn'] : ['Check yourself and ', el('b', null, 'rate how well you knew it')]));
-    } };
+  // The example verses of the demos, in the language of the app.
+  const DEMOS = {
+    en: { ref: 'Psalm 119:105', text: 'Your word is a lamp to my feet and a light to my path.', parts: ['Your word is a lamp', 'to my feet', 'and a light', 'to my path.'],
+      match: { texts: ['Your word is a lamp to my feet…', 'Be strong and courageous…', 'Do not be anxious about anything…'], refs: ['Joshua 1:9', 'Psalm 119:105', 'Philippians 4:6'] },
+      begin: ['Your word is a lamp to my feet and a light to my path.', 'Be strong and courageous. Do not be frightened …', 'For God so loved the world, that he gave his only Son …', 'Do not be anxious about anything, but in everything …'],
+      which: { text: 'Be strong and courageous. Do not be frightened…', refs: ['Psalm 119:105', 'Joshua 1:9', 'John 3:16', 'Philippians 4:6'] } },
+    de: { ref: 'Psalm 119,105', text: 'Dein Wort ist meines Fußes Leuchte und ein Licht auf meinem Weg.', parts: ['Dein Wort ist', 'meines Fußes Leuchte', 'und ein Licht', 'auf meinem Weg.'],
+      match: { texts: ['Dein Wort ist meines Fußes Leuchte…', 'Sei stark und mutig…', 'Sorgt euch um nichts…'], refs: ['Josua 1,9', 'Psalm 119,105', 'Philipper 4,6'] },
+      begin: ['Dein Wort ist meines Fußes Leuchte und ein Licht auf meinem Weg.', 'Sei stark und mutig! Sei unerschrocken …', 'Denn so sehr hat Gott die Welt geliebt, dass er …', 'Sorgt euch um nichts, sondern in allem …'],
+      which: { text: 'Sei stark und mutig! Sei unerschrocken und verzage nicht…', refs: ['Psalm 119,105', 'Josua 1,9', 'Johannes 3,16', 'Philipper 4,6'] } }
   };
-  const ratingRow = (pressed) => el('div', { class: 'rate' }, RATINGS.map((r, i) =>
-    el('button', { type: 'button', tabindex: '-1', class: 'r' + i + (pressed === i ? ' press' : '') }, icon(r.icon), r.name, el('span', null, r.desc))));
-  const autoRated = el('p', null, 'This way rates itself: no slips is ', el('b', null, 'Got it'), ', one or two slips ', el('b', null, 'Shaky'), ', more ', el('b', null, 'Not yet'), '.');
-  const TUTORIAL = [
-    { kicker: 'Learning', icon: 'cards', title: 'How learning works',
-      text: [el('p', null, 'Pick the verses you want to practise, choose a way of learning, and say each verse from memory. There is nothing to type.'),
-        el('p', null, 'After each verse you rate how well you knew it. The app uses that to give you points and to decide when the verse comes back.')],
-      demo: () => {
-        const steps = [
-          ['Pick verses', el('div', { class: 'mini' }, [0, 1, 2].map(() => el('div', { class: 'ln' }, el('span', { class: 'box' }), el('i')))), (m, on) => m.querySelectorAll('.box').forEach((b, i) => b.classList.toggle('on', on && i !== 1))],
-          ['Choose a way', el('div', { class: 'mini' }, el('div', { class: 'tiles' }, ['turn', 'letters', 'fade', 'bolt'].map(n => el('i', null, icon(n))))), (m, on) => m.querySelectorAll('.tiles i').forEach((b, i) => b.classList.toggle('on', on && i === 2))],
-          ['Rate yourself', el('div', { class: 'mini' }, el('div', { class: 'pills' }, RATINGS.map((r, i) => el('i', { class: 'r' + i }, icon(r.icon))))), (m, on) => m.querySelectorAll('.pills i').forEach((b, i) => b.classList.toggle('on', on && i === 2))]
-        ];
-        const boxes = steps.map(([name, mini]) => el('div', { class: 'dstep' }, mini, name));
-        return { node: el('div', { class: 'dsteps' }, boxes), frames: 5, ms: 1200, show: (f) => steps.forEach(([, mini, set], i) => { boxes[i].classList.toggle('on', f === i + 1); set(mini, f > i); }) };
-      } },
-    { kicker: 'Scoring', icon: 'sparkle', title: 'Rate yourself, earn points',
-      text: [el('p', null, el('b', null, 'Not yet'), ' gives no points and shows the verse again three cards later. ', el('b', null, 'Shaky'), ' (you needed help) gives 5, ',
-        el('b', null, 'Got it'), ' (small slips) 10 and ', el('b', null, 'Perfect'), ' (word for word) 15.'),
-        el('p', null, 'Be honest with yourself: the rating decides how soon you see the verse again.')],
-      demo: () => {
-        const pts = el('div', { class: 'dpoints' }), wrap = el('div', { class: 'floatwrap', style: 'width:100%' });
-        let total = 0;
-        return { node: [pts, wrap], frames: 5, ms: 1300, show: (f) => {
-          if (f === 0) total = 0;
-          const r = f >= 1 && f <= 4 ? f - 1 : null;
-          if (r != null) total += RATINGS[r].points;
-          pts.replaceChildren(String(total), el('small', null, ' points'));
-          wrap.replaceChildren(ratingRow(r));
-          if (r != null) {
-            const b = wrap.querySelectorAll('.rate button')[r];
-            b.style.position = 'relative';
-            b.append(el('span', { class: 'float' }, '+' + RATINGS[r].points));
-          }
-        } };
-      } },
-    { kicker: 'Scoring', icon: 'flame', title: 'A run earns a bonus',
-      text: [el('p', null, 'Every verse you rate ', el('b', null, 'Got it'), ' or ', el('b', null, 'Perfect'), ' in a row adds 2 extra points, up to 10 extra per verse.'),
-        el('p', null, 'A ', el('b', null, 'Shaky'), ' or ', el('b', null, 'Not yet'), ' ends the run, and the next one starts again from zero.')],
-      demo: () => {
-        const run = [[2, 0], [2, 2], [3, 4], [2, 6], [1, 0], [2, 0]];
-        const cards = run.map(([r, bonus]) => el('div', null, el('span', { class: 'r' + r }, icon(RATINGS[r].icon)), el('span', null, RATINGS[r].name),
-          el('b', null, '+' + (RATINGS[r].points + bonus)), el('span', { class: 'bon' }, bonus ? `bonus +${bonus}` : '')));
-        const cap = el('div', { class: 'cap' });
-        return { node: [el('div', { class: 'drun' }, cards), cap], frames: 8, ms: 1000, show: (f) => {
-          cards.forEach((c, i) => c.classList.toggle('on', i < f));
-          const n = Math.min(f, run.length);
-          let streak = 0;
-          for (let i = 0; i < n; i++) streak = run[i][0] >= 2 ? streak + 1 : 0;
-          cap.replaceChildren(...(n === 5 ? ['Shaky: the run ends'] : streak >= 2 ? [el('b', null, `${streak} in a row`)] : ['']));
-        } };
-      } },
-    { kicker: 'Scoring', icon: 'layers', title: 'Levels bring verses back at the right time',
-      text: [el('p', null, 'Each verse has a level from 0 to 6, shown as dots. ', el('b', null, 'Got it'), ' moves it up one level, ', el('b', null, 'Perfect'), ' two, ',
-        el('b', null, 'Shaky'), ' down one (but not below 1) and ', el('b', null, 'Not yet'), ' back to 0.'),
-        el('p', null, 'The higher the level, the longer until the verse is due again. Only your first rating of a verse in a session changes its level. From level 3 a verse counts as learned, from level 5 as mastered.'),
-        el('p', null, 'A verse can go up at most 2 levels a day, however often you practise it. Quick ways such as Match up only raise it part of the way: to reach Mastered, say the whole verse from memory.')],
-      demo: () => {
-        const DUE = ['today', '1 day', '2 days', '4 days', '8 days', '16 days', '32 days'];
-        const path = [[0, null], [1, 2], [2, 2], [4, 3], [3, 1], [0, 0]];
-        const stps = DUE.map((_, i) => el('div', { class: 'stp s' + stageOfEntry({ box: i }), style: `height:${16 + i * 16}px` }, String(i)));
-        const tok = el('div', { class: 'tok' }, el('span', null, icon('book')));
-        const labels = DUE.map((d, i) => el('span', { class: 's' + stageOfEntry({ box: i }) }, d));
-        const cap = el('div', { class: 'cap' });
-        return { node: [el('div', { class: 'dstairs' }, stps, tok), el('div', { class: 'dlabels' }, labels), cap], frames: path.length + 1, ms: 1500, show: (f) => {
-          const [lvl, r] = path[Math.min(f, path.length - 1)];
-          tok.style.left = `calc(${lvl} * (100% + 4px) / 7)`;
-          tok.style.bottom = `${16 + lvl * 16 + 4}px`;
-          const st = r == null ? 0 : stageOfEntry({ box: lvl });
-          tok.className = 'tok s' + st;
-          stps.forEach((x, i) => x.classList.toggle('on', i === lvl));
-          labels.forEach((x, i) => x.classList.toggle('on', i === lvl));
-          cap.replaceChildren(...(r == null ? ['A new verse starts at level 0'] : [el('b', null, RATINGS[r].name), ` · level ${lvl} · `, el('span', { class: 'stg s' + st }, STAGES[st].name), ` · due ${lvl ? 'in ' + DUE[lvl] : 'again today'}`]));
-        } };
-      } },
-    { kicker: 'Scoring', icon: 'flame', title: 'Keep your day streak',
-      text: [el('p', null, 'Every day you learn at least one verse counts towards your streak. The home page shows how many days in a row you have learned, and how many verses are due today.')],
-      demo: () => {
-        const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const dots = names.map(() => el('i', null, icon('check')));
-        const count = el('div', { class: 'dflame' });
-        const cap = el('div', { class: 'cap' });
-        return { node: [count, el('div', { class: 'ddays' }, names.map((d, i) => el('div', null, dots[i], d))), cap], frames: 8, ms: 900, show: (f) => {
-          const n = Math.min(f, 5);
-          dots.forEach((d, i) => { d.classList.toggle('on', i < n); d.classList.toggle('today', i === 5 && f >= 6); });
-          count.replaceChildren(flameIcon(), String(n), el('small', null, n === 1 ? 'day in a row' : 'days in a row'));
-          cap.replaceChildren(f >= 6 ? 'Learn today to keep it going' : '');
-        } };
-      } },
-    { mode: 'flip', text: [el('p', null, 'You see the passage. Say the verse aloud or in your head, then turn the card and compare.')],
-      demo: demoFlip([el('div', { class: 'kicker' }, 'Say the verse'), el('div', { class: 'big' }, DEMO.ref)], [el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, DEMO.text)]) },
-    { mode: 'reverse', text: [el('p', null, 'The other way round: you read the verse and name where it is from.')],
-      demo: demoFlip([el('div', { class: 'kicker' }, 'Which passage is this?'), el('div', { class: 'vtxt' }, DEMO.text)], [el('div', { class: 'big' }, DEMO.ref)]) },
-    { mode: 'letters', text: [el('p', null, 'Only the first letter of each word is shown. A good step between reading a verse and knowing it by heart.')],
-      demo: demoFlip([el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt letters' }, firstLetters(DEMO.text))], [el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, DEMO.text)]) },
-    { mode: 'fade', text: [el('p', null, 'Some words are blanked out. The higher a verse\'s level, the more words disappear, until none are left.')],
-      demo: () => {
-        const toks = tokenize(DEMO.text), hide = new Set([2, 8, 14, 20, 22]);
-        const words = (reveal) => toks.map((tk, i) => !hide.has(i) ? tk.pre + tk.core + tk.post : [tk.pre, el('span', { class: reveal ? 'gapword' : 'gap' }, tk.core), tk.post]).flat();
-        return demoFlip([el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, words(false))], [el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, words(true))])();
-      } },
-    { mode: 'match', text: [el('p', null, 'Tap a verse, then the passage it belongs to, in rounds of up to five verses. You need at least two verses for this.'),
-        el('p', null, 'Rates itself: right at the first try is ', el('b', null, 'Got it'), ', one miss ', el('b', null, 'Shaky'), ', more ', el('b', null, 'Not yet'), '.')],
-      demo: () => {
-        const texts = ['Your word is a lamp to my feet…', 'Be strong and courageous…', 'Do not be anxious about anything…'];
-        const refs = ['Joshua 1:9', 'Psalm 119:105', 'Philippians 4:6'];
-        const tb = texts.map(t => el('button', { type: 'button', tabindex: '-1', class: 'mitem mtext' }, el('span', null, t)));
-        const rb = refs.map(r => el('button', { type: 'button', tabindex: '-1', class: 'mitem mref' }, r));
-        // [text selected, ref selected or wrong, pairs done]
-        const F = [[null, null, 0], [0, null, 0], [null, null, 1], [1, null, 1], [1, 2, 1], [1, null, 1], [null, null, 2], [2, null, 2], [null, null, 3], [null, null, 3]];
-        const pair = [1, 0, 2];
-        const cap = el('div', { class: 'cap' });
-        return { node: [el('div', { class: 'match' }, el('div', { class: 'mcol' }, tb), el('div', { class: 'mcol' }, rb)), cap], frames: F.length, ms: 900, show: (f) => {
-          const [sel, wrong, done] = F[f];
-          tb.forEach((b, i) => { b.className = 'mitem mtext' + (i < done ? ' done' : wrong != null && i === sel ? ' wrong' : i === sel ? ' sel' : ''); });
-          rb.forEach((b, i) => { const k = pair.indexOf(i); b.className = 'mitem mref' + (k < done ? ' done' : wrong === i ? ' wrong' : ''); });
-          cap.replaceChildren(...(f >= 4 && f <= 6 ? ['A miss: this verse counts as ', el('b', null, 'Shaky')] : f >= 8 ? ['Round complete'] : ['']));
-        } };
-      } },
-    { mode: 'order', text: [el('p', null, 'The verse is cut into pieces. Tap them in the right order. The better you know a verse, the smaller the pieces get.'), autoRated.cloneNode(true)],
-      demo: () => {
-        const pool = [2, 0, 3, 1];
-        const pieces = pool.map(i => el('button', { type: 'button', tabindex: '-1', class: 'piece' }, DEMO.parts[i]));
-        const line = el('div', { class: 'vtxt' });
-        const cap = el('div', { class: 'cap' });
-        // [placed, wrong piece tapped]
-        const F = [[0], [1], [1, 2], [2], [3], [4], [4]];
-        return { node: [el('div', { class: 'face stage' }, el('div', { class: 'kicker' }, DEMO.ref), line), el('div', { class: 'pieces' }, pieces), cap], frames: F.length, ms: 1000, show: (f) => {
-          const [placed, wrong] = F[f];
-          const prev = F[Math.max(0, f - 1)][0];
-          line.replaceChildren(...DEMO.parts.slice(0, placed).map((p, i) => el('span', { class: f && i === placed - 1 && placed > prev ? 'newbit' : '' }, (i ? ' ' : '') + p)), placed < 4 ? el('span', { class: 'rest' }, (placed ? ' ' : '') + '…') : '');
-          pieces.forEach((b, k) => { const i = pool[k]; b.className = 'piece' + (i < placed ? ' gone' : i === wrong ? ' wrong' : ''); });
-          cap.replaceChildren(...(wrong != null ? ['Wrong piece: one slip'] : placed === 4 ? ['Done with one slip: ', el('b', null, 'Shaky'), ' +5'] : ['']));
-        } };
-      } },
-    { mode: 'build', text: [el('p', null, 'You start with no text at all and say as much as you can from memory. Then the verse comes back one phrase at a time: you say everything so far, with first letters as a hint for the earlier phrases. At the end you say the whole verse and rate yourself.')],
-      demo: () => {
-        const face = el('div', { class: 'face stage' }), under = el('div', { class: 'floatwrap', style: 'width:100%' });
-        const n = DEMO.parts.length;
-        return { node: [face, under], frames: n + 4, ms: 1300, show: (f) => {
-          if (f === 0) { face.replaceChildren(el('div', { class: 'kicker' }, 'From memory'), el('div', { class: 'big' }, DEMO.ref)); under.replaceChildren(''); return; }
-          f--;
-          if (f < n) face.replaceChildren(el('div', { class: 'kicker' }, `Phrase ${f + 1} of ${n}`),
-            el('div', { class: 'vtxt' }, f ? el('span', { class: 'cue' }, firstLetters(DEMO.parts.slice(0, f).join(' ')) + ' ') : null, el('span', { class: 'now newbit' }, DEMO.parts[f])));
-          else if (f === n) face.replaceChildren(el('div', { class: 'kicker' }, 'Now say the whole verse'), el('div', { class: 'big' }, DEMO.ref));
-          else face.replaceChildren(el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, DEMO.text));
-          under.replaceChildren(f > n ? ratingRow(f === n + 2 ? 2 : null) : '');
-        } };
-      } },
-    { mode: 'lightning', text: [el('p', null, 'One minute of quick questions about the verses you picked: which passage is this, or how does this passage begin. Try to beat your best.'),
-        el('p', null, 'A right answer counts as ', el('b', null, 'Got it'), ' with points, a wrong one as ', el('b', null, 'Shaky'), ' without points.')],
-      demo: () => {
-        const Q = [
-          { kicker: 'How does it begin?', ref: 'Psalm 119:105', options: ['Your word is a lamp to my feet and a light to my path.', 'Be strong and courageous. Do not be frightened …', 'For God so loved the world, that he gave his only Son …', 'Do not be anxious about anything, but in everything …'], answer: 0 },
-          { kicker: 'Which passage is this?', text: 'Be strong and courageous. Do not be frightened…', options: ['Psalm 119:105', 'Joshua 1:9', 'John 3:16', 'Philippians 4:6'], answer: 1 }
-        ];
-        const time = el('b'), right = el('b'), barIn = el('div'), face = el('div', { class: 'face stage' }), opts = el('div', { class: 'opts two' });
-        return { node: [el('div', { class: 'dhud' }, el('span', { class: 'clock' }, icon('clock'), time), el('span', null, right, ' right')), el('div', { class: 'bar' }, barIn), face, opts], frames: 6, ms: 1000, show: (f) => {
-          const q = Q[f < 3 ? 0 : 1], picked = f % 3 === 1 || f % 3 === 2;
-          const sec = 60 - f * 4;
-          time.textContent = `0:${String(sec).padStart(2, '0')}`;
-          barIn.style.width = Math.round(100 * sec / 60) + '%';
-          right.textContent = String((f >= 1 ? 1 : 0) + (f >= 4 ? 1 : 0));
-          face.replaceChildren(el('div', { class: 'kicker' }, q.kicker), q.ref ? el('div', { class: 'big' }, q.ref) : el('div', { class: 'vtxt' }, q.text));
-          opts.replaceChildren(...q.options.map((o, i) => el('button', { type: 'button', tabindex: '-1', class: 'opt' + (picked && i === q.answer ? ' right' : '') }, o)));
-        } };
-      } }
-  ];
-  // The mode slides follow the order of MODES, so "How this way works" can open at the selected mode.
-  TUTORIAL.sort((a, b) => (a.mode ? MODES.findIndex(m => m.id === a.mode) : -1) - (b.mode ? MODES.findIndex(m => m.id === b.mode) : -1));
+  // The slides are built in the language of the app, again whenever it changes.
+  function buildTutorial() {
+    const DEMO = DEMOS[uiLang] || DEMOS.en;
+    const demoFlip = (front, back) => () => {
+      const card = el('div', { class: 'flip' }, el('div', { class: 'flip-inner' }, el('div', { class: 'face front' }, front), el('div', { class: 'face back' }, back)));
+      const cap = el('div', { class: 'cap' });
+      return { node: [card, cap], frames: 4, show: (f) => {
+        card.classList.toggle('turned', f >= 2);
+        cap.replaceChildren(...(f < 2 ? [t('Say it from memory, then tap to turn')] : rich(t('Check yourself and **rate how well you knew it**'))));
+      } };
+    };
+    const ratingRow = (pressed) => el('div', { class: 'rate' }, RATINGS.map((r, i) =>
+      el('button', { type: 'button', tabindex: '-1', class: 'r' + i + (pressed === i ? ' press' : '') }, icon(r.icon), r.name, el('span', null, r.desc))));
+    const R = RATINGS.map(r => r.name); // "Not yet", "Shaky", "Got it", "Perfect"
+    const autoRated = el('p', null, rich(t('This way rates itself: no slips is **{r2}**, one or two slips **{r1}**, more **{r0}**.', { r0: R[0], r1: R[1], r2: R[2] })));
+    const TUTORIAL = [
+      { kicker: t('Learning|kicker'), icon: 'cards', title: t('How learning works'),
+        text: [el('p', null, t('Pick the verses you want to practise, choose a way of learning, and say each verse from memory. There is nothing to type.')),
+          el('p', null, t('After each verse you rate how well you knew it. The app uses that to give you points and to decide when the verse comes back.'))],
+        demo: () => {
+          const steps = [
+            [t('Pick verses'), el('div', { class: 'mini' }, [0, 1, 2].map(() => el('div', { class: 'ln' }, el('span', { class: 'box' }), el('i')))), (m, on) => m.querySelectorAll('.box').forEach((b, i) => b.classList.toggle('on', on && i !== 1))],
+            [t('Choose a way'), el('div', { class: 'mini' }, el('div', { class: 'tiles' }, ['turn', 'letters', 'fade', 'bolt'].map(n => el('i', null, icon(n))))), (m, on) => m.querySelectorAll('.tiles i').forEach((b, i) => b.classList.toggle('on', on && i === 2))],
+            [t('Rate yourself'), el('div', { class: 'mini' }, el('div', { class: 'pills' }, RATINGS.map((r, i) => el('i', { class: 'r' + i }, icon(r.icon))))), (m, on) => m.querySelectorAll('.pills i').forEach((b, i) => b.classList.toggle('on', on && i === 2))]
+          ];
+          const boxes = steps.map(([name, mini]) => el('div', { class: 'dstep' }, mini, name));
+          return { node: el('div', { class: 'dsteps' }, boxes), frames: 5, ms: 1200, show: (f) => steps.forEach(([, mini, set], i) => { boxes[i].classList.toggle('on', f === i + 1); set(mini, f > i); }) };
+        } },
+      { kicker: t('Scoring'), icon: 'sparkle', title: t('Rate yourself, earn points'),
+        text: [el('p', null, rich(t('**{r0}** gives no points and shows the verse again three cards later. **{r1}** (you needed help) gives 5, **{r2}** (small slips) 10 and **{r3}** (word for word) 15.', { r0: R[0], r1: R[1], r2: R[2], r3: R[3] }))),
+          el('p', null, t('Be honest with yourself: the rating decides how soon you see the verse again.'))],
+        demo: () => {
+          const pts = el('div', { class: 'dpoints' }), wrap = el('div', { class: 'floatwrap', style: 'width:100%' });
+          let total = 0;
+          return { node: [pts, wrap], frames: 5, ms: 1300, show: (f) => {
+            if (f === 0) total = 0;
+            const r = f >= 1 && f <= 4 ? f - 1 : null;
+            if (r != null) total += RATINGS[r].points;
+            pts.replaceChildren(String(total), el('small', null, ' ' + t('points')));
+            wrap.replaceChildren(ratingRow(r));
+            if (r != null) {
+              const b = wrap.querySelectorAll('.rate button')[r];
+              b.style.position = 'relative';
+              b.append(el('span', { class: 'float' }, '+' + RATINGS[r].points));
+            }
+          } };
+        } },
+      { kicker: t('Scoring'), icon: 'flame', title: t('A run earns a bonus'),
+        text: [el('p', null, rich(t('Every verse you rate **{r2}** or **{r3}** in a row adds 2 extra points, up to 10 extra per verse.', { r2: R[2], r3: R[3] }))),
+          el('p', null, rich(t('A **{r1}** or **{r0}** ends the run, and the next one starts again from zero.', { r0: R[0], r1: R[1] })))],
+        demo: () => {
+          const run = [[2, 0], [2, 2], [3, 4], [2, 6], [1, 0], [2, 0]];
+          const cards = run.map(([r, bonus]) => el('div', null, el('span', { class: 'r' + r }, icon(RATINGS[r].icon)), el('span', null, RATINGS[r].name),
+            el('b', null, '+' + (RATINGS[r].points + bonus)), el('span', { class: 'bon' }, bonus ? t('bonus +{n}', { n: bonus }) : '')));
+          const cap = el('div', { class: 'cap' });
+          return { node: [el('div', { class: 'drun' }, cards), cap], frames: 8, ms: 1000, show: (f) => {
+            cards.forEach((c, i) => c.classList.toggle('on', i < f));
+            const n = Math.min(f, run.length);
+            let streak = 0;
+            for (let i = 0; i < n; i++) streak = run[i][0] >= 2 ? streak + 1 : 0;
+            cap.replaceChildren(...(n === 5 ? [t('{r}: the run ends', { r: R[1] })] : streak >= 2 ? [el('b', null, t('{n} in a row', { n: streak }))] : ['']));
+          } };
+        } },
+      { kicker: t('Scoring'), icon: 'layers', title: t('Levels bring verses back at the right time'),
+        text: [el('p', null, rich(t('Each verse has a level from 0 to 6, shown as dots. **{r2}** moves it up one level, **{r3}** two, **{r1}** down one (but not below 1) and **{r0}** back to 0.', { r0: R[0], r1: R[1], r2: R[2], r3: R[3] }))),
+          el('p', null, t('The higher the level, the longer until the verse is due again. Only your first rating of a verse in a session changes its level. From level 3 a verse counts as learned, from level 5 as mastered.')),
+          el('p', null, t('A verse can go up at most 2 levels a day, however often you practise it. Quick ways such as {match} only raise it part of the way: to reach Mastered, say the whole verse from memory.', { match: MODES.find(m => m.id === 'match').name }))],
+        demo: () => {
+          const DUE = [t('today'), tn(1, '{n} day', '{n} days'), ...[2, 4, 8, 16, 32].map(n => tn(n, '{n} day', '{n} days'))];
+          const path = [[0, null], [1, 2], [2, 2], [4, 3], [3, 1], [0, 0]];
+          const stps = DUE.map((_, i) => el('div', { class: 'stp s' + stageOfEntry({ box: i }), style: `height:${16 + i * 16}px` }, String(i)));
+          const tok = el('div', { class: 'tok' }, el('span', null, icon('book')));
+          const labels = DUE.map((d, i) => el('span', { class: 's' + stageOfEntry({ box: i }) }, d));
+          const cap = el('div', { class: 'cap' });
+          return { node: [el('div', { class: 'dstairs' }, stps, tok), el('div', { class: 'dlabels' }, labels), cap], frames: path.length + 1, ms: 1500, show: (f) => {
+            const [lvl, r] = path[Math.min(f, path.length - 1)];
+            tok.style.left = `calc(${lvl} * (100% + 4px) / 7)`;
+            tok.style.bottom = `${16 + lvl * 16 + 4}px`;
+            const st = r == null ? 0 : stageOfEntry({ box: lvl });
+            tok.className = 'tok s' + st;
+            stps.forEach((x, i) => x.classList.toggle('on', i === lvl));
+            labels.forEach((x, i) => x.classList.toggle('on', i === lvl));
+            cap.replaceChildren(...(r == null ? [t('A new verse starts at level 0')] : [el('b', null, RATINGS[r].name), ' · ' + t('level {n}', { n: lvl }) + ' · ', el('span', { class: 'stg s' + st }, STAGES[st].name), ' · ' + (lvl ? t('due in {when}', { when: DUE[lvl] }) : t('due again today'))]));
+          } };
+        } },
+      { kicker: t('Scoring'), icon: 'flame', title: t('Keep your day streak'),
+        text: [el('p', null, t('Every day you learn at least one verse counts towards your streak. The home page shows how many days in a row you have learned, and how many verses are due today.'))],
+        demo: () => {
+          // Monday to Saturday, named in the language of the app (5 Jan 2026 was a Monday).
+          const names = [5, 6, 7, 8, 9, 10].map(d => new Date(2026, 0, d).toLocaleDateString(dateLocale(), { weekday: 'short' }));
+          const dots = names.map(() => el('i', null, icon('check')));
+          const count = el('div', { class: 'dflame' });
+          const cap = el('div', { class: 'cap' });
+          return { node: [count, el('div', { class: 'ddays' }, names.map((d, i) => el('div', null, dots[i], d))), cap], frames: 8, ms: 900, show: (f) => {
+            const n = Math.min(f, 5);
+            dots.forEach((d, i) => { d.classList.toggle('on', i < n); d.classList.toggle('today', i === 5 && f >= 6); });
+            count.replaceChildren(flameIcon(), String(n), el('small', null, n === 1 ? t('day in a row') : t('days in a row')));
+            cap.replaceChildren(f >= 6 ? t('Learn today to keep it going') : '');
+          } };
+        } },
+      { mode: 'flip', text: [el('p', null, t('You see the passage. Say the verse aloud or in your head, then turn the card and compare.'))],
+        demo: demoFlip([el('div', { class: 'kicker' }, t('Say the verse')), el('div', { class: 'big' }, DEMO.ref)], [el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, DEMO.text)]) },
+      { mode: 'reverse', text: [el('p', null, t('The other way round: you read the verse and name where it is from.'))],
+        demo: demoFlip([el('div', { class: 'kicker' }, t('Which passage is this?')), el('div', { class: 'vtxt' }, DEMO.text)], [el('div', { class: 'big' }, DEMO.ref)]) },
+      { mode: 'letters', text: [el('p', null, t('Only the first letter of each word is shown. A good step between reading a verse and knowing it by heart.'))],
+        demo: demoFlip([el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt letters' }, firstLetters(DEMO.text))], [el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, DEMO.text)]) },
+      { mode: 'fade', text: [el('p', null, t('Some words are blanked out. The higher a verse\'s level, the more words disappear, until none are left.'))],
+        demo: () => {
+          const toks = tokenize(DEMO.text), hide = new Set([2, 8, 14, 20, 22]);
+          const words = (reveal) => toks.map((tk, i) => !hide.has(i) ? tk.pre + tk.core + tk.post : [tk.pre, el('span', { class: reveal ? 'gapword' : 'gap' }, tk.core), tk.post]).flat();
+          return demoFlip([el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, words(false))], [el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, words(true))])();
+        } },
+      { mode: 'match', text: [el('p', null, t('Tap a verse, then the passage it belongs to, in rounds of up to five verses. You need at least two verses for this.')),
+          el('p', null, rich(t('Rates itself: right at the first try is **{r2}**, one miss **{r1}**, more **{r0}**.', { r0: R[0], r1: R[1], r2: R[2] })))],
+        demo: () => {
+          const { texts, refs } = DEMO.match;
+          const tb = texts.map(x => el('button', { type: 'button', tabindex: '-1', class: 'mitem mtext' }, el('span', null, x)));
+          const rb = refs.map(r => el('button', { type: 'button', tabindex: '-1', class: 'mitem mref' }, r));
+          // [text selected, ref selected or wrong, pairs done]
+          const F = [[null, null, 0], [0, null, 0], [null, null, 1], [1, null, 1], [1, 2, 1], [1, null, 1], [null, null, 2], [2, null, 2], [null, null, 3], [null, null, 3]];
+          const pair = [1, 0, 2];
+          const cap = el('div', { class: 'cap' });
+          return { node: [el('div', { class: 'match' }, el('div', { class: 'mcol' }, tb), el('div', { class: 'mcol' }, rb)), cap], frames: F.length, ms: 900, show: (f) => {
+            const [sel, wrong, done] = F[f];
+            tb.forEach((b, i) => { b.className = 'mitem mtext' + (i < done ? ' done' : wrong != null && i === sel ? ' wrong' : i === sel ? ' sel' : ''); });
+            rb.forEach((b, i) => { const k = pair.indexOf(i); b.className = 'mitem mref' + (k < done ? ' done' : wrong === i ? ' wrong' : ''); });
+            cap.replaceChildren(...(f >= 4 && f <= 6 ? rich(t('A miss: this verse counts as **{r}**', { r: R[1] })) : f >= 8 ? [t('Round complete')] : ['']));
+          } };
+        } },
+      { mode: 'order', text: [el('p', null, t('The verse is cut into pieces. Tap them in the right order. The better you know a verse, the smaller the pieces get.')), autoRated.cloneNode(true)],
+        demo: () => {
+          const pool = [2, 0, 3, 1];
+          const pieces = pool.map(i => el('button', { type: 'button', tabindex: '-1', class: 'piece' }, DEMO.parts[i]));
+          const line = el('div', { class: 'vtxt' });
+          const cap = el('div', { class: 'cap' });
+          // [placed, wrong piece tapped]
+          const F = [[0], [1], [1, 2], [2], [3], [4], [4]];
+          return { node: [el('div', { class: 'face stage' }, el('div', { class: 'kicker' }, DEMO.ref), line), el('div', { class: 'pieces' }, pieces), cap], frames: F.length, ms: 1000, show: (f) => {
+            const [placed, wrong] = F[f];
+            const prev = F[Math.max(0, f - 1)][0];
+            line.replaceChildren(...DEMO.parts.slice(0, placed).map((p, i) => el('span', { class: f && i === placed - 1 && placed > prev ? 'newbit' : '' }, (i ? ' ' : '') + p)), placed < 4 ? el('span', { class: 'rest' }, (placed ? ' ' : '') + '…') : '');
+            pieces.forEach((b, k) => { const i = pool[k]; b.className = 'piece' + (i < placed ? ' gone' : i === wrong ? ' wrong' : ''); });
+            cap.replaceChildren(...(wrong != null ? [t('Wrong piece: one slip')] : placed === 4 ? rich(t('Done with one slip: **{r}** +5', { r: R[1] })) : ['']));
+          } };
+        } },
+      { mode: 'build', text: [el('p', null, t('You start with no text at all and say as much as you can from memory. Then the verse comes back one phrase at a time: you say everything so far, with first letters as a hint for the earlier phrases. At the end you say the whole verse and rate yourself.'))],
+        demo: () => {
+          const face = el('div', { class: 'face stage' }), under = el('div', { class: 'floatwrap', style: 'width:100%' });
+          const n = DEMO.parts.length;
+          return { node: [face, under], frames: n + 4, ms: 1300, show: (f) => {
+            if (f === 0) { face.replaceChildren(el('div', { class: 'kicker' }, t('From memory')), el('div', { class: 'big' }, DEMO.ref)); under.replaceChildren(''); return; }
+            f--;
+            if (f < n) face.replaceChildren(el('div', { class: 'kicker' }, t('Phrase {a} of {b}', { a: f + 1, b: n })),
+              el('div', { class: 'vtxt' }, f ? el('span', { class: 'cue' }, firstLetters(DEMO.parts.slice(0, f).join(' ')) + ' ') : null, el('span', { class: 'now newbit' }, DEMO.parts[f])));
+            else if (f === n) face.replaceChildren(el('div', { class: 'kicker' }, t('Now say the whole verse')), el('div', { class: 'big' }, DEMO.ref));
+            else face.replaceChildren(el('div', { class: 'kicker' }, DEMO.ref), el('div', { class: 'vtxt' }, DEMO.text));
+            under.replaceChildren(f > n ? ratingRow(f === n + 2 ? 2 : null) : '');
+          } };
+        } },
+      { mode: 'lightning', text: [el('p', null, t('One minute of quick questions about the verses you picked: which passage is this, or how does this passage begin. Try to beat your best.')),
+          el('p', null, rich(t('A right answer counts as **{r2}** with points, a wrong one as **{r1}** without points.', { r1: R[1], r2: R[2] })))],
+        demo: () => {
+          const Q = [
+            { kicker: t('How does it begin?'), ref: DEMO.ref, options: DEMO.begin, answer: 0 },
+            { kicker: t('Which passage is this?'), text: DEMO.which.text, options: DEMO.which.refs, answer: 1 }
+          ];
+          const time = el('b'), right = el('b'), barIn = el('div'), face = el('div', { class: 'face stage' }), opts = el('div', { class: 'opts two' });
+          return { node: [el('div', { class: 'dhud' }, el('span', { class: 'clock' }, icon('clock'), time), el('span', null, right, ' ' + t('right'))), el('div', { class: 'bar' }, barIn), face, opts], frames: 6, ms: 1000, show: (f) => {
+            const q = Q[f < 3 ? 0 : 1], picked = f % 3 === 1 || f % 3 === 2;
+            const sec = 60 - f * 4;
+            time.textContent = `0:${String(sec).padStart(2, '0')}`;
+            barIn.style.width = Math.round(100 * sec / 60) + '%';
+            right.textContent = String((f >= 1 ? 1 : 0) + (f >= 4 ? 1 : 0));
+            face.replaceChildren(el('div', { class: 'kicker' }, q.kicker), q.ref ? el('div', { class: 'big' }, q.ref) : el('div', { class: 'vtxt' }, q.text));
+            opts.replaceChildren(...q.options.map((o, i) => el('button', { type: 'button', tabindex: '-1', class: 'opt' + (picked && i === q.answer ? ' right' : '') }, o)));
+          } };
+        } }
+    ];
+    // The mode slides follow the order of MODES, so "How this way works" can open at the selected mode.
+    TUTORIAL.sort((a, b) => (a.mode ? MODES.findIndex(m => m.id === a.mode) : -1) - (b.mode ? MODES.findIndex(m => m.id === b.mode) : -1));
+    return TUTORIAL;
+  }
+  let TUTORIAL = buildTutorial();
   let tutIdx = 0, tutTimer = null;
   function openTutorial(at) {
     try { localStorage.setItem(TUTORIAL_KEY, '1'); } catch (e) {}
@@ -2706,18 +3190,19 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const box = el('div', { class: 'demo', 'aria-hidden': 'true' }, demo.node);
     $('tutorial').replaceChildren(el('div', { class: 'tutin' },
       el('div', { class: 'tuthead' },
-        el('span', { class: 'kicker' }, mode ? [icon('cards'), `Ways of learning · ${tutIdx - firstModeSlide() + 1} of ${MODES.length}`] : [icon(slide.icon), slide.kicker]),
-        el('button', { type: 'button', class: 'link', onclick: closeTutorial }, icon('x'), 'Close')),
+        el('span', { class: 'kicker' }, mode ? [icon('cards'), t('Ways of learning · {a} of {b}', { a: tutIdx - firstModeSlide() + 1, b: MODES.length })] : [icon(slide.icon), slide.kicker]),
+        el('button', { type: 'button', class: 'link', onclick: closeTutorial }, icon('x'), t('Close'))),
       el('h3', { id: 'tutTitle' }, mode ? [icon(mode.icon), mode.name] : slide.title),
       mode ? el('div', { class: 'tutcap' }, capBadge(mode.cap), capDots(mode.cap),
-        el('span', null, mode.cap >= MAX_BOX ? 'Can take a verse all the way to Mastered.' : ['Raises a verse to level ', el('b', null, String(mode.cap)), ' at most. ', capHigher(mode.cap)])) : null,
+        el('span', null, mode.cap >= MAX_BOX ? t('Can take a verse all the way to Mastered.') : [...rich(t('Raises a verse to level **{n}** at most.', { n: mode.cap })), ' ', capHigher(mode.cap)])) : null,
       box,
       el('div', { class: 'tuttext' }, slide.text),
       el('div', { class: 'tutnav' },
-        el('button', { type: 'button', onclick: () => tutGo(-1), ...(tutIdx ? {} : { disabled: '' }) }, 'Back'),
-        el('div', { class: 'tutdots', role: 'group', 'aria-label': 'Slides' }, TUTORIAL.map((x, i) =>
+        el('button', { type: 'button', onclick: () => tutGo(-1), ...(tutIdx ? {} : { disabled: '' }) }, t('Back')),
+        el('div', { class: 'tutdots', role: 'group', 'aria-label': t('Slides') }, TUTORIAL.map((x, i) =>
           el('button', { type: 'button', class: x.mode ? 'mode' : '', 'aria-label': x.mode ? MODES.find(m => m.id === x.mode).name : x.title, ...(i === tutIdx ? { 'aria-current': 'step' } : {}), onclick: () => { tutIdx = i; renderTutorial(); } }))),
-        el('button', { type: 'button', id: 'tutNext', class: 'primary', onclick: () => last ? closeTutorial() : tutGo(1) }, last ? 'Done' : 'Next'))));
+        el('button', { type: 'button', id: 'tutNext', class: 'primary', onclick: () => last ? closeTutorial() : tutGo(1) }, last ? t('Done') : t('Next')))));
+
     let f = 0;
     demo.show(0);
     tutTimer = setInterval(() => {
@@ -2760,23 +3245,23 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
   function showTranslationsError(err) {
     $('trErr').textContent = err && err.code === 'permission-denied'
-      ? 'Translations cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.'
-      : 'Could not save the translations: ' + (err && err.message || err);
+      ? t('Translations cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.')
+      : t('Could not save the translations: ') + (err && err.message || err);
   }
-  const langOptions = (sel) => Object.entries(LANGUAGES).map(([k, name]) => el('option', { value: k, ...(k === sel ? { selected: '' } : {}) }, name));
+  const langOptions = (sel) => Object.entries(LANGUAGES).map(([k, name]) => el('option', { value: k, ...(k === sel ? { selected: '' } : {}) }, t(name)));
   function renderTranslationSettings() {
-    $('trList').replaceChildren(...translationList.map((t, i) => {
-      const used = verses.filter(v => v.translations.some(x => translationInfo(x.translation) === t)).length;
+    $('trList').replaceChildren(...translationList.map((tr, i) => {
+      const used = verses.filter(v => v.translations.some(x => translationInfo(x.translation) === tr)).length;
       return el('div', { class: 'trrow' },
-        el('strong', null, t.code),
-        el('span', { class: 'trname' }, [t.name, used ? `${used} verse${used === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')),
-        el('select', { 'aria-label': 'Language of ' + t.code, onchange: (e) => storeTranslations(translationList.map((x, j) => j === i ? { ...x, lang: e.target.value } : x)) }, langOptions(t.lang)),
-        el('button', { type: 'button', class: 'link danger', title: 'Remove ' + t.code, 'aria-label': 'Remove ' + t.code, onclick: () => storeTranslations(translationList.filter((x, j) => j !== i)) }, icon('trash')));
-    }), ...(translationList.length ? [] : [el('p', { class: 'hint' }, 'No translations yet.')]));
+        el('strong', null, tr.code),
+        el('span', { class: 'trname' }, [tr.name, used ? tn(used, '{n} verse', '{n} verses') : ''].filter(Boolean).join(' · ')),
+        el('select', { 'aria-label': t('Language of {tr}', { tr: tr.code }), onchange: (e) => storeTranslations(translationList.map((x, j) => j === i ? { ...x, lang: e.target.value } : x)) }, langOptions(tr.lang)),
+        el('button', { type: 'button', class: 'link danger', title: t('Remove {tag}', { tag: tr.code }), 'aria-label': t('Remove {tag}', { tag: tr.code }), onclick: () => storeTranslations(translationList.filter((x, j) => j !== i)) }, icon('trash')));
+    }), ...(translationList.length ? [] : [el('p', { class: 'hint' }, t('No translations yet.'))]));
     // Translations typed on verses but not registered yet can be added with one click.
     const unlisted = allTranslations().filter(t => !translationInfo(t));
-    $('trUnlisted').replaceChildren(...(unlisted.length ? [el('span', { class: 'hint' }, 'Also on your verses:')] : []),
-      ...unlisted.map(t => el('button', { type: 'button', class: 'chip suggest', onclick: () => { $('trCode').value = t; fillKnown(); $('trCode').focus(); } }, '+ ' + t)));
+    $('trUnlisted').replaceChildren(...(unlisted.length ? [el('span', { class: 'hint' }, t('Also on your verses:'))] : []),
+      ...unlisted.map(tr => el('button', { type: 'button', class: 'chip suggest', onclick: () => { $('trCode').value = tr; fillKnown(); $('trCode').focus(); } }, '+ ' + tr)));
     $('knownTrList').replaceChildren(...KNOWN_TRANSLATIONS.filter(k => !translationInfo(k.code)).map(k => el('option', { value: k.code }, k.name)));
   }
   // Typing the abbreviation of a well-known translation fills in its name and language.
@@ -2789,13 +3274,51 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   $('trCode').addEventListener('input', fillKnown);
   function addTranslation() {
     const code = norm($('trCode').value);
-    if (!code) { $('trErr').textContent = 'Type the abbreviation, e.g. ESV.'; $('trCode').focus(); return; }
-    if (translationList.some(t => t.code.toLowerCase() === code.toLowerCase())) { $('trErr').textContent = `${code} is already in the list.`; return; }
+    if (!code) { $('trErr').textContent = t('Type the abbreviation, e.g. ESV.'); $('trCode').focus(); return; }
+    if (translationList.some(x => x.code.toLowerCase() === code.toLowerCase())) { $('trErr').textContent = t('{x} is already in the list.', { x: code }); return; }
     storeTranslations([...translationList, { code, name: norm($('trName').value), lang: $('trLang').value }]);
     $('trCode').value = ''; $('trName').value = ''; $('trLang').value = 'en';
   }
   $('btnAddTr').addEventListener('click', addTranslation);
   [$('trCode'), $('trName')].forEach(i => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addTranslation(); } }));
+
+  // ---------- settings: language ----------
+  // The choice is kept on this device, and in shared mode also in the person's own data (progress/{uid}, field
+  // `lang`), so it follows them to their other devices.
+  function renderLanguage() {
+    $('langSelect').replaceChildren(...Object.entries(UI_LANGS).map(([k, name]) => el('option', { value: k, ...(k === uiLang ? { selected: '' } : {}) }, name)));
+    $('langHint').textContent = cloud ? t('Saved with your account, so it is used on all your devices.') : t('Saved in this browser.');
+  }
+  // Shows every text of the app in `lang`. `store` saves it for the signed-in person; not when it came from their data.
+  function setLanguage(lang, store) {
+    if (!UI_LANGS[lang]) return;
+    uiLang = lang;
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+    if (store && cloud) { progress.lang = lang; saveProgress({ fields: ['lang'] }); }
+    translateStatic();
+    TUTORIAL = buildTutorial();
+    if ($('tutorial').open) renderTutorial();
+    relabelForm();
+    $('trLang').replaceChildren(...langOptions($('trLang').value));
+    if (gateText) $('gateMsg').textContent = gateText();
+    renderLanguage(); renderBackupAge(); relabelCloud(); renderAll();
+  }
+  $('langSelect').addEventListener('change', (e) => setLanguage(e.target.value, true));
+  // Builds the translation blocks of the form again in the new language, keeping what was typed.
+  function relabelForm() {
+    const kept = [...$('versions').children].map(b => ({ tr: b.querySelector('.vtranslation').value, ref: b.querySelector('.vref').value,
+      text: b.querySelector('.vtext').value, book: b._book, hl: b._hl, fav: b._fav }));
+    $('versions').replaceChildren();
+    kept.forEach(x => {
+      const b = addVersionBlock();
+      b.querySelector('.vtranslation').value = x.tr; b.querySelector('.vref').value = x.ref; b.querySelector('.vtext').value = x.text;
+      b._book = x.book; b._hl = x.hl; b._fav = x.fav; b._prevText = x.text;
+      renderPreview(b);
+    });
+    numberBlocks(); refreshBlocks();
+    $('formTitle').textContent = editingId ? t('Edit verse') : t('Add a verse');
+    setLabel($('btnSubmit'), editingId ? t('Save changes') : t('Add verse'));
+  }
 
   // ---------- settings: merge tags ----------
   let mergePicked = new Set();
@@ -2811,11 +3334,11 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   function renderMergeTags() {
     const tc = tagCounts();
     mergePicked = new Set([...mergePicked].filter(t => tc.some(([k]) => k === t)));
-    $('mergeTags').replaceChildren(...tc.map(([t, n]) => {
-      const on = mergePicked.has(t);
+    $('mergeTags').replaceChildren(...tc.map(([tag, n]) => {
+      const on = mergePicked.has(tag);
       return el('button', { type: 'button', class: 'chip' + (on ? ' on' : ' suggest'), 'aria-pressed': String(on),
-        onclick: () => { on ? mergePicked.delete(t) : mergePicked.add(t); disarmMerge(); renderMergeTags(); } }, `${t} · ${n}`);
-    }), ...(tc.length ? [] : [el('p', { class: 'hint' }, 'No tags yet.')]));
+        onclick: () => { on ? mergePicked.delete(tag) : mergePicked.add(tag); disarmMerge(); renderMergeTags(); } }, `${tag} · ${n}`);
+    }), ...(tc.length ? [] : [el('p', { class: 'hint' }, t('No tags yet.'))]));
     $('mergeTagList').replaceChildren(...tc.map(([t]) => el('option', { value: t })));
     if (mergeArmed) renderMergeConfirm();
   }
@@ -2825,18 +3348,18 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const tags = [...mergePicked];
     if (!affected.length) { disarmMerge(); return; }
     $('mergeConfirm').replaceChildren(
-      el('p', null, `Replace ${tags.map(t => '"' + t + '"').join(', ')} with "${name}" on ${affected.length} verse${affected.length === 1 ? '' : 's'}? This cannot be undone.`),
+      el('p', null, tn(affected.length, 'Replace {tags} with "{name}" on {n} verse? This cannot be undone.', 'Replace {tags} with "{name}" on {n} verses? This cannot be undone.', { tags: tags.map(x => '"' + x + '"').join(', '), name })),
       el('div', { class: 'row' },
-        el('button', { type: 'button', class: 'dangerbtn', onclick: doMerge }, icon('tag'), `Merge into "${name}"`),
-        el('button', { type: 'button', onclick: disarmMerge }, 'Cancel')));
+        el('button', { type: 'button', class: 'dangerbtn', onclick: doMerge }, icon('tag'), t('Merge into "{name}"', { name })),
+        el('button', { type: 'button', onclick: disarmMerge }, t('Cancel'))));
     $('mergeConfirm').hidden = false;
   }
   $('btnMerge').addEventListener('click', () => {
     $('mergeErr').textContent = ''; $('mergeMsg').textContent = '';
     const { name } = mergePlan();
-    if (!mergePicked.size) { $('mergeErr').textContent = 'Pick the tags to merge first.'; return; }
-    if (!name) { $('mergeErr').textContent = 'Type the new tag.'; $('mergeName').focus(); return; }
-    if (mergePicked.size === 1 && mergePicked.has(name)) { $('mergeErr').textContent = 'Pick another tag or type a different name.'; return; }
+    if (!mergePicked.size) { $('mergeErr').textContent = t('Pick the tags to merge first.'); return; }
+    if (!name) { $('mergeErr').textContent = t('Type the new tag.'); $('mergeName').focus(); return; }
+    if (mergePicked.size === 1 && mergePicked.has(name)) { $('mergeErr').textContent = t('Pick another tag or type a different name.'); return; }
     mergeArmed = true; renderMergeConfirm();
   });
   $('mergeName').addEventListener('input', () => { $('mergeErr').textContent = ''; if (mergeArmed) renderMergeConfirm(); });
@@ -2856,7 +3379,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     const count = affected.length;
     mergePicked = new Set(); disarmMerge(); $('mergeName').value = '';
     save(); renderAll();
-    $('mergeMsg').textContent = `Merged into "${name}" on ${count} verse${count === 1 ? '' : 's'}.`;
+    $('mergeMsg').textContent = tn(count, 'Merged into "{name}" on {n} verse.', 'Merged into "{name}" on {n} verses.', { name });
   }
 
   // ---------- settings: reset learning progress ----------
@@ -2865,12 +3388,14 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   $('btnReset').addEventListener('click', () => {
     $('resetMsg').textContent = '';
     const n = Object.keys(progress.verses).filter(id => verses.some(v => v.id === id)).length, extras = $('resetExtras').checked;
-    if (!n && !extras) { $('resetMsg').textContent = 'There is no progress to reset yet.'; return; }
+    if (!n && !extras) { $('resetMsg').textContent = t('There is no progress to reset yet.'); return; }
     $('resetConfirm').replaceChildren(
-      el('p', null, `Reset your progress on ${n} verse${n === 1 ? '' : 's'} to New${extras ? ' and clear your day streak and Lightning round best' : ''}? This cannot be undone.`),
+      el('p', null, extras
+        ? tn(n, 'Reset your progress on {n} verse to New and clear your day streak and Lightning round best? This cannot be undone.', 'Reset your progress on {n} verses to New and clear your day streak and Lightning round best? This cannot be undone.')
+        : tn(n, 'Reset your progress on {n} verse to New? This cannot be undone.', 'Reset your progress on {n} verses to New? This cannot be undone.')),
       el('div', { class: 'row' },
-        el('button', { type: 'button', class: 'dangerbtn', onclick: doReset }, icon('again'), 'Reset my progress'),
-        el('button', { type: 'button', onclick: disarmReset }, 'Cancel')));
+        el('button', { type: 'button', class: 'dangerbtn', onclick: doReset }, icon('again'), t('Reset my progress')),
+        el('button', { type: 'button', onclick: disarmReset }, t('Cancel'))));
     $('resetConfirm').hidden = false;
   });
   $('resetExtras').addEventListener('change', disarmReset);
@@ -2880,7 +3405,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     if (extras) { progress.days = []; delete progress.best; }
     disarmReset(); $('resetExtras').checked = false;
     saveProgress(); renderAll();
-    $('resetMsg').textContent = `Reset ${n} verse${n === 1 ? '' : 's'} to New${extras ? ', streak and best cleared' : ''}.`;
+    $('resetMsg').textContent = extras ? tn(n, 'Reset {n} verse to New, streak and best cleared.', 'Reset {n} verses to New, streak and best cleared.') : tn(n, 'Reset {n} verse to New.', 'Reset {n} verses to New.');
   }
   // Resets one verse to New for the signed-in person.
   function resetVerse(id) {
@@ -2902,7 +3427,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     let at = null;
     try { at = localStorage.getItem(BACKUP_KEY); } catch (e) {}
     const days = at ? Math.floor((Date.now() - new Date(at)) / 864e5) : null;
-    $('backupAge').textContent = at == null ? 'No backup from this device yet' : 'Last backup from this device: ' + (days < 1 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`);
+    $('backupAge').textContent = at == null ? t('No backup from this device yet') : t('Last backup from this device: {when}', { when: days < 1 ? t('today') : days === 1 ? t('yesterday') : t('{n} days ago', { n: days }) });
     $('backupAge').classList.toggle('old', at == null || days >= 30);
   }
   $('btnExport').addEventListener('click', () => {
@@ -2920,8 +3445,8 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   });
   $('btnCopy').addEventListener('click', () => {
     const ta = $('exportText');
-    const done = () => { $('copyMsg').textContent = 'Copied'; };
-    const fallback = () => { ta.focus(); ta.select(); $('copyMsg').textContent = 'Selected, press Ctrl/Cmd+C to copy'; };
+    const done = () => { $('copyMsg').textContent = t('Copied'); };
+    const fallback = () => { ta.focus(); ta.select(); $('copyMsg').textContent = t('Selected, press Ctrl/Cmd+C to copy'); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback);
     else fallback();
   });
@@ -2941,9 +3466,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     $('importErr').textContent = ''; $('importMsg').textContent = '';
     let data;
     try { data = JSON.parse($('importText').value); }
-    catch (e) { $('importErr').textContent = 'That is not valid JSON. Check that you pasted the whole export.'; return; }
+    catch (e) { $('importErr').textContent = t('That is not valid JSON. Check that you pasted the whole export.'); return; }
     const list = Array.isArray(data) ? data : (data && Array.isArray(data.verses) ? data.verses : null);
-    if (!list) { $('importErr').textContent = 'No "verses" list found in this JSON.'; return; }
+    if (!list) { $('importErr').textContent = t('No "verses" list found in this JSON.'); return; }
     const ids = new Set(verses.map(v => v.id));
     const sig = (v) => v.translations.map(t => (t.passage + '|' + t.translation + '|' + t.text).toLowerCase()).join('||');
     const sigs = new Set(verses.map(sig));
@@ -2962,10 +3487,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       if (sets.some(x => x.id === st.id || x.name.toLowerCase() === st.name.toLowerCase())) return;
       storeSet(st); setsAdded++;
     });
-    if (setsAdded) parts.push(`${setsAdded} set${setsAdded === 1 ? '' : 's'}`);
+    if (setsAdded) parts.push(tn(setsAdded, '{n} set', '{n} sets'));
     // Translations not in the list yet; existing ones are left as they are.
     const newTr = ((data && normalizeTranslations(data.translations)) || []).filter(t => !translationList.some(x => x.code.toLowerCase() === t.code.toLowerCase()));
-    if (newTr.length) { storeTranslations([...translationList, ...newTr]); parts.push(`${newTr.length} translation${newTr.length === 1 ? '' : 's'}`); }
+    if (newTr.length) { storeTranslations([...translationList, ...newTr]); parts.push(tn(newTr.length, '{n} translation', '{n} translations')); }
     // Progress only fills in verses that have none yet, so newer progress is never overwritten.
     if ($('importProgress').checked && data && data.progress) {
       const pr = normalizeProgress(data.progress);
@@ -2974,14 +3499,19 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       progress.days = [...new Set([...progress.days, ...pr.days])].sort().slice(-400);
       if (pr.best && pr.best.lightning > ((progress.best || {}).lightning || 0)) progress.best = { lightning: pr.best.lightning };
       saveProgress();
-      if (fill.length) parts.push(`progress for ${fill.length} verse${fill.length === 1 ? '' : 's'}`);
+      if (fill.length) parts.push(tn(fill.length, 'progress for {n} verse', 'progress for {n} verses'));
     }
     renderAll();
-    $('importMsg').textContent = `Imported ${added} verse${added === 1 ? '' : 's'}` + parts.map(x => ', ' + x).join('') + (skipped ? `, skipped ${skipped} already on the board` : '') + (invalid ? `, ignored ${invalid} without passage or text` : '') + '.';
+    $('importMsg').textContent = tn(added, 'Imported {n} verse', 'Imported {n} verses') + parts.map(x => ', ' + x).join('') + (skipped ? ', ' + t('skipped {n} already on the board', { n: skipped }) : '') + (invalid ? ', ' + t('ignored {n} without passage or text', { n: invalid }) : '') + '.';
+
     $('importFile').value = '';
   }
 
   // ---------- shared mode: Google sign-in + Firestore ----------
+  // The sign-in screen's message is kept as a function, so it can be shown again in another language.
+  let gateText = null;
+  function setGateMsg(fn) { gateText = fn; $('gateMsg').textContent = fn(); }
+  let relabelCloud = () => {}; // shows the texts of shared mode in the new language
   function showApp(on) {
     appOn = on;
     applyView();
@@ -2995,7 +3525,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     try {
       [appMod, authMod, fs] = await Promise.all(['firebase-app.js', 'firebase-auth.js', 'firebase-firestore.js'].map(f => import(base_ + f)));
     } catch (e) {
-      $('gateMsg').textContent = 'Could not load Firebase. Check your internet connection and reload the page.';
+      setGateMsg(() => t('Could not load Firebase. Check your internet connection and reload the page.'));
       return;
     }
     const app = appMod.initializeApp(FIREBASE_CONFIG);
@@ -3025,18 +3555,19 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       $('syncErr').hidden = true;
     }
     // Without a group there is nothing to show. The admin still gets the app, to add themselves in Settings.
-    function gate(msg) {
+    // `msg` is the reason, `ask` what to ask the admin; both are functions that return the text.
+    function gate(msg, ask) {
       stopData(); resetData();
       if (isAdmin) {
         showApp(true);
         if (view !== 'settings') setView('settings');
-        $('syncErr').textContent = msg.replace(/ Ask the person.*/, '') + ' Add yourself to a group under People & groups below.';
+        $('syncErr').textContent = msg() + ' ' + t('Add yourself to a group under People & groups below.');
         $('syncErr').hidden = false;
         renderAll();
         return;
       }
       showApp(false);
-      $('gateMsg').textContent = msg;
+      setGateMsg(() => msg() + (ask ? ' ' + ask() : ''));
       $('btnSignIn').hidden = true;
       $('btnGateSignOut').hidden = false;
       renderAll();
@@ -3047,7 +3578,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       if (key === dataKey) return;
       stopData(); resetData();
       dataKey = key; base = path;
-      if (!appOn) $('gateMsg').textContent = 'Loading verses…';
+      if (!appOn) setGateMsg(() => t('Loading verses…'));
       renderAccount();
       dataUnsubs.push(fs.onSnapshot(fs.collection(store, ...gpath('verses')), snap => {
         db = store;
@@ -3080,23 +3611,23 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
           fs.updateDoc(fs.doc(store, 'people', accountEmail), { lastSeen: today }).catch(() => {});
         }
         loadMyGroups();
-      }, err => gate('Could not check your access: ' + (err && err.message || err)));
+      }, err => gate(() => t('Could not check your access: ') + (err && err.message || err)));
     }
     async function loadMyGroups() {
       const token = ++groupsToken;
       if (!person || !person.active) {
         myGroups = []; renderGroupPick();
-        gate(`${user.email} has not been added to Word Memo yet. Ask the person who manages the app to add you, then reload this page.`);
+        gate(() => t('{email} has not been added to Word Memo yet.', { email: user.email }), () => t('Ask the person who manages the app to add you, then reload this page.'));
         return;
       }
       const ids = Array.isArray(person.groupIds) ? person.groupIds : [];
       if (!ids.length) {
         myGroups = []; renderGroupPick();
-        gate('You are not in a group yet. Ask the person who manages the app to add you to one, then reload this page.');
+        gate(() => t('You are not in a group yet.'), () => t('Ask the person who manages the app to add you to one, then reload this page.'));
         return;
       }
       const list = await Promise.all(ids.map(id => fs.getDoc(fs.doc(store, 'groups', id))
-        .then(d => ({ id, name: (d.exists() && d.data().name) || 'Group' }), () => ({ id, name: 'Group' }))));
+        .then(d => ({ id, name: (d.exists() && d.data().name) || '' }), () => ({ id, name: '' }))));
       if (token !== groupsToken) return;
       myGroups = list.sort((a, b) => a.name.localeCompare(b.name));
       let stored = null;
@@ -3109,7 +3640,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     }
     function renderGroupPick() {
       $('menuGroup').hidden = myGroups.length < 2;
-      $('groupSelect').replaceChildren(...myGroups.map(g => el('option', { value: g.id, ...(g.id === groupId ? { selected: '' } : {}) }, g.name)));
+      $('groupSelect').replaceChildren(...myGroups.map(g => el('option', { value: g.id, ...(g.id === groupId ? { selected: '' } : {}) }, g.name || t('Group'))));
     }
     $('groupSelect').addEventListener('change', e => {
       groupId = e.target.value;
@@ -3121,9 +3652,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       if (!user) return;
       const g = myGroups.find(x => x.id === groupId);
       $('accountText').textContent = g
-        ? `Signed in as ${user.email}. You are in the group "${g.name}": its verses and learning sets are shared within the group; your learning progress is your own.`
-        : `Signed in as ${user.email || user.displayName || 'you'}. Verses and learning sets are shared; your learning progress is your own.`;
+        ? t('Signed in as {email}. You are in the group "{group}": its verses and learning sets are shared within the group; your learning progress is your own.', { email: user.email, group: g.name || t('Group') })
+        : t('Signed in as {email}. Verses and learning sets are shared; your learning progress is your own.', { email: user.email || user.displayName || t('you') });
     }
+    relabelCloud = () => { renderAccount(); renderGroupPick(); renderAdmin(); };
 
     // ----- People & groups (admin only) -----
     // Only the admin account named in the Firestore rules may read the `people` collection, so the panel shows
@@ -3133,11 +3665,10 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
     let newGroupName = '';
     const appLink = () => location.origin + location.pathname;
     function adminDone(msg) { $('adminErr').textContent = ''; $('adminMsg').textContent = msg || ''; }
-    function adminFail(err) { $('adminMsg').textContent = ''; $('adminErr').textContent = 'Could not save: ' + (err && err.message || err); }
+    function adminFail(err) { $('adminMsg').textContent = ''; $('adminErr').textContent = t('Could not save: ') + (err && err.message || err); }
     const personDoc = (email) => fs.doc(store, 'people', email);
-    const groupName = (id) => (allGroups.find(g => g.id === id) || {}).name || 'Unknown group';
-    function textField(label, value, onInput, attrs) {
-      const id = 'adm' + label.replace(/\W/g, '');
+    const groupName = (id) => (allGroups.find(g => g.id === id) || {}).name || t('Unknown group');
+    function textField(id, label, value, onInput, attrs) {
       return el('div', { class: 'field' }, el('label', { for: id }, label),
         el('input', { id, type: 'text', value, autocomplete: 'off', oninput: e => onInput(e.target.value), ...(attrs || {}) }));
     }
@@ -3147,23 +3678,23 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       const box = $('admin');
       const sorted = [...people].sort((a, b) => (b.active === true) - (a.active === true) || (a.name || a.id).localeCompare(b.name || b.id));
       box.replaceChildren(
-        el('p', { class: 'hint' }, 'Only you see this panel. People you add sign in with that Google address at ', el('a', { href: appLink() }, appLink()),
-          ' and see the verses and learning sets of their groups. Everyone\'s learning progress stays their own.'),
-        el('h3', null, 'People'),
+        el('p', { class: 'hint' }, t('Only you see this panel. People you add sign in with that Google address at') + ' ', el('a', { href: appLink() }, appLink()),
+          ' ' + t('and see the verses and learning sets of their groups. Everyone\'s learning progress stays their own.')),
+        el('h3', null, t('People')),
         el('div', { class: 'adminlist' }, sorted.map(personRow)),
-        el('h3', null, 'Add a person'),
+        el('h3', null, t('Add a person')),
         addPersonForm(),
-        el('h3', null, 'Groups'),
+        el('h3', null, t('Groups')),
         el('div', { class: 'adminlist' }, allGroups.map(groupRow)),
         el('div', { class: 'row' },
-          el('input', { type: 'text', value: newGroupName, placeholder: 'New group name', 'aria-label': 'New group name', autocomplete: 'off', oninput: e => { newGroupName = e.target.value; } }),
-          el('button', { type: 'button', onclick: createGroup }, icon('plus'), 'Create group')));
+          el('input', { type: 'text', value: newGroupName, placeholder: t('New group name'), 'aria-label': t('New group name'), autocomplete: 'off', oninput: e => { newGroupName = e.target.value; } }),
+          el('button', { type: 'button', onclick: createGroup }, icon('plus'), t('Create group'))));
     }
     function groupChips(selected, onToggle) {
-      if (!allGroups.length) return el('span', { class: 'hint' }, 'No groups yet. Create one below.');
+      if (!allGroups.length) return el('span', { class: 'hint' }, t('No groups yet. Create one below.'));
       return el('div', { class: 'suggestions' }, allGroups.map(g => {
         const on = selected.includes(g.id);
-        return el('button', { type: 'button', class: 'chip ' + (on ? 'on' : 'suggest'), 'aria-pressed': String(on), onclick: () => onToggle(g.id, !on) }, g.name);
+        return el('button', { type: 'button', class: 'chip ' + (on ? 'on' : 'suggest'), 'aria-pressed': String(on), onclick: () => onToggle(g.id, !on) }, g.name || t('Group'));
       }));
     }
     function personRow(p) {
@@ -3171,54 +3702,54 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       const self = p.id === accountEmail;
       return el('div', { class: 'personrow' + (p.active ? '' : ' off') },
         el('div', { class: 'who' },
-          el('input', { type: 'text', value: p.name || '', placeholder: 'Name', 'aria-label': 'Name of ' + p.id, onchange: e => {
+          el('input', { type: 'text', value: p.name || '', placeholder: t('Name'), 'aria-label': t('Name of {email}', { email: p.id }), onchange: e => {
             const name = norm(e.target.value);
-            if (name && name !== p.name) fs.updateDoc(personDoc(p.id), { name }).then(() => adminDone(`Renamed to ${name}.`), adminFail);
+            if (name && name !== p.name) fs.updateDoc(personDoc(p.id), { name }).then(() => adminDone(t('Renamed to {name}.', { name })), adminFail);
           } }),
           el('span', { class: 'email' }, p.id),
-          el('span', { class: 'seen' }, !p.active ? 'No access' : p.lastSeen ? 'Last seen ' + p.lastSeen : 'Not signed in yet')),
+          el('span', { class: 'seen' }, !p.active ? t('No access') : p.lastSeen ? t('Last seen {day}', { day: p.lastSeen }) : t('Not signed in yet'))),
         groupChips(ids, (gid, on) => fs.updateDoc(personDoc(p.id), { groupIds: on ? fs.arrayUnion(gid) : fs.arrayRemove(gid) })
-          .then(() => adminDone(`${p.name || p.id} ${on ? 'added to' : 'removed from'} ${groupName(gid)}.`), adminFail)),
+          .then(() => adminDone(t(on ? '{name} added to {group}.' : '{name} removed from {group}.', { name: p.name || p.id, group: groupName(gid) })), adminFail)),
         self ? null : el('div', { class: 'row' }, el('button', { type: 'button', class: 'link' + (p.active ? ' danger' : ''), onclick: () =>
           fs.updateDoc(personDoc(p.id), { active: !p.active })
-            .then(() => adminDone(p.active ? `${p.name || p.id} no longer has access. Their learning progress is kept.` : `${p.name || p.id} has access again.`), adminFail)
-        }, p.active ? 'Remove access' : 'Give access back')));
+            .then(() => adminDone(t(p.active ? '{name} no longer has access. Their learning progress is kept.' : '{name} has access again.', { name: p.name || p.id })), adminFail)
+        }, p.active ? t('Remove access') : t('Give access back'))));
     }
     function addPersonForm() {
       return el('div', { class: 'addperson' },
-        textField('Google address', draft.email, v => { draft.email = v; }, { type: 'email', placeholder: 'name@gmail.com' }),
-        textField('Name', draft.name, v => { draft.name = v; }, { placeholder: 'How they are shown' }),
+        textField('admGoogleaddress', t('Google address'), draft.email, v => { draft.email = v; }, { type: 'email', placeholder: 'name@gmail.com' }),
+        textField('admName', t('Name'), draft.name, v => { draft.name = v; }, { placeholder: t('How they are shown') }),
         groupChips(draft.groupIds, (gid, on) => { draft.groupIds = on ? [...draft.groupIds, gid] : draft.groupIds.filter(x => x !== gid); renderAdmin(); }),
-        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', onclick: addPerson }, icon('plus'), 'Add person')));
+        el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', onclick: addPerson }, icon('plus'), t('Add person'))));
     }
     function addPerson() {
       const email = norm(draft.email).toLowerCase(), name = norm(draft.name);
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('adminErr').textContent = 'Type their Google address, for example name@gmail.com.'; return; }
-      if (people.some(p => p.id === email)) { $('adminErr').textContent = `${email} is already in the list.`; return; }
-      if (!name) { $('adminErr').textContent = 'Type a name for them.'; return; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('adminErr').textContent = t('Type their Google address, for example name@gmail.com.'); return; }
+      if (people.some(p => p.id === email)) { $('adminErr').textContent = t('{x} is already in the list.', { x: email }); return; }
+      if (!name) { $('adminErr').textContent = t('Type a name for them.'); return; }
       const groupIds = draft.groupIds.filter(id => allGroups.some(g => g.id === id));
       fs.setDoc(personDoc(email), { name, groupIds, active: true, addedAt: new Date().toISOString() }).then(() => {
         draft.email = ''; draft.name = ''; draft.groupIds = [];
-        adminDone(`Added ${name}. ${groupIds.length ? '' : 'Put them in a group so they can see verses. '}Send them the link ${appLink()} and ask them to sign in with ${email}.`);
+        adminDone(t('Added {name}.', { name }) + ' ' + (groupIds.length ? '' : t('Put them in a group so they can see verses.') + ' ') + t('Send them the link {link} and ask them to sign in with {email}.', { link: appLink(), email }));
         renderAdmin();
       }, adminFail);
     }
     function groupRow(g) {
       const members = people.filter(p => p.active && (p.groupIds || []).includes(g.id));
       return el('div', { class: 'grouprow' },
-        el('input', { type: 'text', value: g.name, 'aria-label': 'Name of the group ' + g.name, onchange: e => {
+        el('input', { type: 'text', value: g.name, 'aria-label': t('Name of the group {name}', { name: g.name }), onchange: e => {
           const name = norm(e.target.value);
-          if (name && name !== g.name) fs.updateDoc(fs.doc(store, 'groups', g.id), { name }).then(() => adminDone(`Renamed the group to ${name}.`), adminFail);
+          if (name && name !== g.name) fs.updateDoc(fs.doc(store, 'groups', g.id), { name }).then(() => adminDone(t('Renamed the group to {name}.', { name })), adminFail);
         } }),
-        el('span', { class: 'count' }, members.length ? members.map(p => p.name || p.id).join(', ') : 'No members'));
+        el('span', { class: 'count' }, members.length ? members.map(p => p.name || p.id).join(', ') : t('No members')));
     }
     function createGroup() {
       const name = norm(newGroupName);
-      if (!name) { $('adminErr').textContent = 'Type a name for the new group.'; return; }
-      if (allGroups.some(g => g.name.toLowerCase() === name.toLowerCase())) { $('adminErr').textContent = `There is already a group called ${name}.`; return; }
+      if (!name) { $('adminErr').textContent = t('Type a name for the new group.'); return; }
+      if (allGroups.some(g => g.name.toLowerCase() === name.toLowerCase())) { $('adminErr').textContent = t('There is already a group called {name}.', { name }); return; }
       fs.setDoc(fs.doc(store, 'groups', uid()), { name, createdAt: new Date().toISOString() }).then(() => {
         newGroupName = '';
-        adminDone(`Created the group ${name}. Tick it on a person to add them.`);
+        adminDone(t('Created the group {name}. Tick it on a person to add them.', { name }));
         renderAdmin();
       }, adminFail);
     }
@@ -3232,7 +3763,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         if (!was && !appOn && person !== undefined) loadMyGroups();
       }, stop));
       adminUnsubs.push(fs.onSnapshot(fs.collection(store, 'groups'), snap => {
-        allGroups = snap.docs.map(d => ({ id: d.id, name: d.data().name || 'Group' })).sort((a, b) => a.name.localeCompare(b.name));
+        allGroups = snap.docs.map(d => ({ id: d.id, name: d.data().name || '' })).sort((a, b) => a.name.localeCompare(b.name));
         renderAdmin();
       }, () => {}));
     }
@@ -3242,12 +3773,12 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       const provider = new authMod.GoogleAuthProvider();
       authMod.signInWithPopup(auth, provider).catch(err => {
         if (err.code === 'auth/popup-blocked') return authMod.signInWithRedirect(auth, provider);
-        if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') $('gateErr').textContent = 'Sign-in failed: ' + err.message;
+        if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') $('gateErr').textContent = t('Sign-in failed: ') + err.message;
       });
     });
     $('btnSignOut').addEventListener('click', () => authMod.signOut(auth));
     $('btnGateSignOut').addEventListener('click', () => authMod.signOut(auth));
-    authMod.getRedirectResult(auth).catch(err => { $('gateErr').textContent = 'Sign-in failed: ' + err.message; });
+    authMod.getRedirectResult(auth).catch(err => { $('gateErr').textContent = t('Sign-in failed: ') + err.message; });
 
     authMod.onAuthStateChanged(auth, u => {
       user = u;
@@ -3262,7 +3793,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
         accountEmail = '';
         showApp(false);
         $('btnSignOut').hidden = true;
-        $('gateMsg').textContent = 'Sign in with your Google account to see and edit the verses you share.';
+        setGateMsg(() => t('Sign in with your Google account to see and edit the verses you share.'));
         $('btnSignIn').hidden = false;
         renderAll();
         return;
@@ -3270,7 +3801,7 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       accountEmail = (u.email || '').toLowerCase();
       renderAccount();
       $('btnSignOut').hidden = false;
-      $('gateMsg').textContent = 'Loading verses…';
+      setGateMsg(() => t('Loading verses…'));
       $('btnSignIn').hidden = true;
       watchAdmin();
       watchPerson();
@@ -3278,6 +3809,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
       unsubscribeProgress = fs.onSnapshot(progressDoc, snap => {
         progressRef = progressDoc;
         progress = normalizeProgress(snap.exists() ? snap.data() : null);
+        // The language saved in this person's data follows them to every device.
+        if (progress.lang && progress.lang !== uiLang) setLanguage(progress.lang, false);
+
         renderBoard();
         renderHome();
         if (!session) renderLearn();
@@ -3286,7 +3820,9 @@ dialog.tut::backdrop { background: rgba(18, 20, 28, .55); }
   }
 
   resetVersionBlocks();
+  renderLanguage();
   renderBackupAge();
+
   applyView();
   renderAll();
   if (cloud) startCloud();
