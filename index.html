@@ -142,6 +142,8 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 .pick input, .check input { accent-color: var(--accent); width: 16px; height: 16px; flex: none; margin: 0; }
 .pick .ppass { font-family: var(--font-verse); font-weight: 600; white-space: nowrap; }
 .pick .ptext { flex: 1; min-width: 0; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pickall { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.pickall .due { margin-left: auto; }
 .pick .due { font-size: .75rem; color: var(--muted); white-space: nowrap; }
 @media (max-width: 520px) { .pick .ptext { display: none; } .pick .due { margin-left: auto; } }
 .check { display: inline-flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: .92rem; color: var(--ink); cursor: pointer; }
@@ -978,6 +980,9 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     trSelect.value = learnTr;
     const shuffleBox = el('input', { type: 'checkbox', onchange: (e) => { learnShuffle = e.target.checked; } });
     shuffleBox.checked = learnShuffle;
+    const allBox = el('input', { type: 'checkbox', 'data-pick': '*', 'aria-label': 'Select all verses', onchange: (e) => setPicked(e.target.checked ? verses : []) });
+    allBox.checked = picked.size === verses.length;
+    allBox.indeterminate = picked.size > 0 && picked.size < verses.length;
     const n = picked.size, minPick = learnMode === 'match' ? 2 : 1;
     const sameAsPicked = (st) => { const ids = setVerseIds(st); return ids.length === picked.size && ids.every(id => picked.has(id)); };
     const activeSet = n ? sets.find(sameAsPicked) : null;
@@ -1001,8 +1006,6 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         el('div', { class: 'lab' }, 'Verses'),
         el('div', { class: 'filters' },
           el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked(due) }, `Due now · ${due.length}`),
-          el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked(verses) }, `All · ${verses.length}`),
-          el('button', { type: 'button', class: 'chip suggest', onclick: () => setPicked([]) }, 'None'),
           tagCounts().map(([t, c]) => {
             const tagged = verses.filter(v => v.tags.includes(t));
             const all = tagged.every(v => picked.has(v.id));
@@ -1010,7 +1013,9 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
               onclick: () => { tagged.forEach(v => all ? picked.delete(v.id) : picked.add(v.id)); renderSetup(); } }, `${t} · ${c}`);
           })
         ),
-        el('div', { class: 'picklist' }, verses.map(v => {
+        el('div', { class: 'picklist' }, el('label', { class: 'pick pickall' }, allBox,
+          el('span', { class: 'ppass' }, n === verses.length ? 'Deselect all' : 'Select all'),
+          el('span', { class: 'due' }, `${n} of ${verses.length} selected`)), verses.map(v => {
           const t = verseTr(v);
           const cb = el('input', { type: 'checkbox', 'data-pick': v.id, onchange: (e) => { if (e.target.checked) picked.add(v.id); else picked.delete(v.id); renderSetup(); } });
           cb.checked = picked.has(v.id);
