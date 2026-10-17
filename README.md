@@ -15,6 +15,7 @@ Open `index.html` in a browser.
 - Edit or delete verses.
 - Export all verses to JSON and import them again. Older single-translation exports still import.
 - Learn in sessions: pick verses one by one, by tag, or all that are due. Choose a way of learning (flip cards, which verse?, first letters, fading words), turn each card around when ready and rate how well you knew it: Not yet, Shaky, Got it or Perfect. Or play "Match up": tap each verse and then its passage, in rounds of up to five; a first-try match counts as Got it, one miss as Shaky, more as Not yet. Nothing needs typing.
+- Save a selection of verses as a named learning set to focus on over several days. Sets are shared, and each set shows how many of its verses you have learned and how many are due. Saving under an existing name updates that set.
 - Each rating moves the verse to a level (0 to 6, shown as dots) and schedules when it is due again, from the same day up to a month later. Sessions give points, runs of known verses earn a bonus, and the app counts the days in a row you practised.
 
 - Share one collection of verses with other people: everyone signs in with Google and sees and edits the same verses, live. It also works offline and syncs later.
@@ -25,7 +26,9 @@ While `FIREBASE_CONFIG` at the top of the script in `index.html` is empty, verse
 
 Once it is filled in, verses are stored in Cloud Firestore in the `verses` collection (one document per verse, keyed by its id), and only the Google accounts listed in the Firestore rules can read or change them.
 
-Learning progress is personal. Locally it is kept in `localStorage` under `verseBoard.progress.v1`. In shared mode each person's progress is one document `progress/{uid}`, which only they can read or change. If you set up sharing before learning sessions existed, paste the current [`firestore.rules`](firestore.rules) into Firestore → Rules again (with your two addresses) and publish, or progress cannot be saved.
+Learning sets are shared: in `localStorage` under `verseBoard.sets.v1`, or in the Firestore collection `sets` (one document per set: name and verse ids).
+
+Learning progress is personal. Locally it is kept in `localStorage` under `verseBoard.progress.v1`. In shared mode each person's progress is one document `progress/{uid}`, which only they can read or change. If you set up sharing before learning sessions or learning sets existed, paste the current [`firestore.rules`](firestore.rules) into Firestore → Rules again (with your two addresses) and publish, or progress cannot be saved.
 
 ## Set up sharing
 

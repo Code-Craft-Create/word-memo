@@ -145,7 +145,7 @@ button.addver { border-style: dashed; color: var(--accent); background: transpar
 .pick .due { font-size: .75rem; color: var(--muted); white-space: nowrap; }
 @media (max-width: 520px) { .pick .ptext { display: none; } .pick .due { margin-left: auto; } }
 .check { display: inline-flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: .92rem; color: var(--ink); cursor: pointer; }
-.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 button.mode { text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; }
 .mode strong { font-weight: 600; }
 .mode span { font-size: .8rem; color: var(--muted); }
@@ -192,6 +192,15 @@ button.primary:disabled { opacity: .5; cursor: default; filter: none; }
 .results { display: flex; flex-direction: column; }
 .results > div { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: .92rem; }
 .results .ppass { font-family: var(--font-verse); font-weight: 600; flex: 1; min-width: 0; }
+.sets { display: flex; flex-direction: column; gap: 6px; }
+.setrow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px 2px 2px; min-width: 0; }
+.setrow.on { border-color: var(--accent); background: var(--accent-soft); }
+button.setpick { flex: 1; min-width: 0; border: 0; background: none; text-align: left; display: flex; flex-direction: column; padding: 7px 10px; }
+.setpick strong { font-weight: 600; overflow-wrap: anywhere; }
+.setpick span { font-size: .8rem; color: var(--muted); }
+.setrow .bar { width: 90px; flex: none; }
+@media (max-width: 520px) { .setrow .bar { width: 48px; } }
+.savesets input[type=text] { flex: 1 1 200px; width: auto; }
 .match { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, .5fr); gap: 10px; align-items: start; }
 .mcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 button.mitem { text-align: left; padding: 10px 12px; min-width: 0; }
@@ -864,6 +873,63 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
   let learnMode = 'flip', learnTr = '', learnShuffle = true;
   let session = null;
 
+  // ---------- learning sets ----------
+  // A learning set is a named list of verses to focus on over several days. Sets are shared like verses:
+  // in this browser's storage, or in shared mode in the Firestore collection `sets` (one document per set).
+  const SETS_KEY = 'verseBoard.sets.v1';
+  function normalizeSet(raw) {
+    const name = norm(raw && raw.name);
+    if (!name) return null;
+    return { id: norm(raw.id) || uid(), name, verseIds: Array.isArray(raw.verseIds) ? [...new Set(raw.verseIds.map(String))] : [],
+      createdAt: raw.createdAt || new Date().toISOString(), ...(raw.updatedAt ? { updatedAt: raw.updatedAt } : {}) };
+  }
+  const sortSets = (list) => list.sort((a, b) => a.name.localeCompare(b.name));
+  function loadSets() {
+    if (cloud) return [];
+    try { return sortSets((JSON.parse(localStorage.getItem(SETS_KEY)) || []).map(normalizeSet).filter(Boolean)); } catch (e) { return []; }
+  }
+  let sets = loadSets();
+  let setName = ''; // the name typed under the verse list
+  let pendingSetDelete = null;
+  function storeSet(set, removed) {
+    sets = sortSets([...sets.filter(x => x.id !== set.id), ...(removed ? [] : [set])]);
+    if (!cloud) { try { localStorage.setItem(SETS_KEY, JSON.stringify(sets)); } catch (e) {} return; }
+    if (!db) return;
+    const { id, ...data } = set;
+    (removed ? fs.deleteDoc(fs.doc(db, 'sets', id)) : fs.setDoc(fs.doc(db, 'sets', id), data)).catch(showSetsError);
+  }
+  function showSetsError(err) {
+    $('syncErr').textContent = err && err.code === 'permission-denied'
+      ? 'Learning sets cannot be shared yet. Publish the updated Firestore rules (see README) in the Firebase console.'
+      : 'Could not save the learning set: ' + (err && err.message || err);
+    $('syncErr').hidden = false;
+  }
+  const setVerseIds = (st) => st.verseIds.filter(id => verses.some(v => v.id === id));
+  function setRow(st, on) {
+    const ids = setVerseIds(st);
+    const learned = ids.filter(id => boxOf(id) >= 3).length, dueN = ids.filter(isDue).length;
+    const armed = pendingSetDelete === st.id;
+    return el('div', { class: 'setrow' + (on ? ' on' : '') },
+      el('button', { type: 'button', class: 'setpick', 'aria-pressed': String(on), onclick: () => { picked = new Set(ids); setName = st.name; renderSetup(); } },
+        el('strong', null, st.name),
+        el('span', null, `${ids.length} verse${ids.length === 1 ? '' : 's'} · ${learned} learned · ${dueN} due`)),
+      el('div', { class: 'bar', title: `${learned} of ${ids.length} at level 3 or higher` }, el('div', { style: `width:${ids.length ? Math.round(100 * learned / ids.length) : 0}%` })),
+      el('button', { type: 'button', class: 'link danger' + (armed ? ' armed' : ''), onclick: () => {
+        if (armed) { pendingSetDelete = null; storeSet(st, true); renderSetup(); }
+        else { pendingSetDelete = st.id; renderSetup(); setTimeout(() => { if (pendingSetDelete === st.id) { pendingSetDelete = null; renderLearn(); } }, 4000); }
+      } }, armed ? 'Click again to delete' : 'Delete'));
+  }
+  function saveSelectionAsSet() {
+    const name = norm(setName);
+    if (!name) { $('setMsg').textContent = 'Type a name for the set first.'; $('setName').focus(); return; }
+    if (!picked.size) { $('setMsg').textContent = 'Pick some verses first.'; return; }
+    const existing = sets.find(x => x.name.toLowerCase() === name.toLowerCase());
+    const now = new Date().toISOString();
+    storeSet(existing ? { ...existing, verseIds: [...picked], updatedAt: now } : { id: uid(), name, verseIds: [...picked], createdAt: now });
+    renderSetup();
+    $('setMsg').textContent = existing ? `Updated "${existing.name}".` : `Saved "${name}".`;
+  }
+
   function applyView() {
     document.querySelector('.main').hidden = !appOn || view !== 'board';
     $('learn').hidden = !appOn || view !== 'learn';
@@ -913,10 +979,24 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     const shuffleBox = el('input', { type: 'checkbox', onchange: (e) => { learnShuffle = e.target.checked; } });
     shuffleBox.checked = learnShuffle;
     const n = picked.size, minPick = learnMode === 'match' ? 2 : 1;
+    const sameAsPicked = (st) => { const ids = setVerseIds(st); return ids.length === picked.size && ids.every(id => picked.has(id)); };
+    const activeSet = n ? sets.find(sameAsPicked) : null;
+    const typedSet = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase());
+    const nameInput = el('input', { type: 'text', id: 'setName', placeholder: 'Name, e.g. Advent 2026', autocomplete: 'off', 'aria-label': 'Name of the learning set',
+      oninput: (e) => { setName = e.target.value; const t = sets.find(x => x.name.toLowerCase() === norm(setName).toLowerCase()); $('btnSaveSet').textContent = t ? 'Update set' : 'Save as set'; $('setMsg').textContent = ''; },
+      onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); saveSelectionAsSet(); } } });
+    nameInput.value = setName;
+    const typing = document.activeElement && document.activeElement.id === 'setName' ? document.activeElement.selectionStart : null;
     root.replaceChildren(el('section', { class: 'panel' },
       el('div', { class: 'learnhead' },
         el('h2', null, 'Start a learning session'),
         streak ? el('span', { class: 'count' }, `${streak} day${streak === 1 ? '' : 's'} in a row`) : null),
+      el('div', { class: 'field' },
+        el('div', { class: 'lab' }, 'Learning sets'),
+        sets.length
+          ? el('div', { class: 'sets' }, sets.map(st => setRow(st, activeSet && activeSet.id === st.id)))
+          : el('p', { class: 'hint' }, 'No sets yet. Pick verses below and save them as a set to focus on them over several days.')
+      ),
       el('div', { class: 'field' },
         el('div', { class: 'lab' }, 'Verses'),
         el('div', { class: 'filters' },
@@ -935,7 +1015,10 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
           const cb = el('input', { type: 'checkbox', 'data-pick': v.id, onchange: (e) => { if (e.target.checked) picked.add(v.id); else picked.delete(v.id); renderSetup(); } });
           cb.checked = picked.has(v.id);
           return el('label', { class: 'pick' }, cb, el('span', { class: 'ppass' }, t.passage), el('span', { class: 'ptext' }, t.text), el('span', { class: 'due' }, dueLabel(v.id)), levelDots(v.id));
-        }))
+        })),
+        el('div', { class: 'row savesets' }, nameInput,
+          el('button', { type: 'button', id: 'btnSaveSet', onclick: saveSelectionAsSet }, typedSet ? 'Update set' : 'Save as set'),
+          el('span', { id: 'setMsg', class: 'hint', 'aria-live': 'polite' }))
       ),
       el('div', { class: 'field' },
         el('div', { class: 'lab' }, 'Way of learning'),
@@ -947,11 +1030,12 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         el('label', { class: 'lab', for: 'learnTr' }, 'Translation'), trSelect,
         el('label', { class: 'check' }, shuffleBox, 'Shuffle the order')
       ),
-      el('button', { type: 'button', class: 'primary', onclick: () => startSession([...picked]) },
+      el('button', { type: 'button', id: 'btnStart', class: 'primary', onclick: () => startSession([...picked]) },
         n < minPick ? (minPick === 2 ? 'Pick at least two verses to match' : 'Pick at least one verse') : `Start with ${n} verse${n === 1 ? '' : 's'}`)
     ));
-    if (n < minPick) root.querySelector('button.primary').disabled = true;
+    if (n < minPick) $('btnStart').disabled = true;
     root.querySelector('.picklist').scrollTop = prevScroll;
+    if (typing != null) { nameInput.focus(); nameInput.setSelectionRange(typing, typing); }
     if (focusId) { const f = root.querySelector(`[data-pick="${CSS.escape(focusId)}"]`); if (f) f.focus(); }
   }
 
@@ -1275,7 +1359,7 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     let store;
     try { store = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
     catch (e) { store = fs.getFirestore(app); }
-    let unsubscribe = null, unsubscribeProgress = null;
+    let unsubscribe = null, unsubscribeProgress = null, unsubscribeSets = null;
     let deniedEmail = null;
 
     $('btnSignIn').addEventListener('click', () => {
@@ -1292,6 +1376,8 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
     authMod.onAuthStateChanged(auth, user => {
       if (unsubscribe) { unsubscribe(); unsubscribe = null; }
       if (unsubscribeProgress) { unsubscribeProgress(); unsubscribeProgress = null; }
+      if (unsubscribeSets) { unsubscribeSets(); unsubscribeSets = null; }
+      sets = []; setName = '';
       if (editingId) stopEdit();
       db = null; synced = new Map(); verses = [];
       progressRef = null; progress = normalizeProgress(null); session = null; picked = null; view = 'board';
@@ -1324,6 +1410,10 @@ button.mitem.wrong { border-color: var(--danger); box-shadow: inset 0 0 0 1px va
         if (err.code === 'permission-denied') { deniedEmail = user.email; authMod.signOut(auth); return; }
         showSyncError(err);
       });
+      unsubscribeSets = fs.onSnapshot(fs.collection(store, 'sets'), snap => {
+        sets = sortSets(snap.docs.map(d => normalizeSet({ ...d.data(), id: d.id })).filter(Boolean));
+        if (!session) renderLearn();
+      }, showSetsError);
       const progressDoc = fs.doc(store, 'progress', user.uid);
       unsubscribeProgress = fs.onSnapshot(progressDoc, snap => {
         progressRef = progressDoc;
